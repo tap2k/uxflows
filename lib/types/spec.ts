@@ -1,0 +1,167 @@
+// Plain TS types mirroring SCHEMA.md (v0). TypeBox/Ajv validation will layer on later.
+
+export type Method = "llm" | "calculation" | "direct";
+export type VariableType = "string" | "number" | "boolean" | "enum";
+export type VariableScope = "plan_level" | "per_persona";
+export type FlowType = "happy" | "sad" | "off" | "utility" | "interrupt";
+export type ExitType = "happy" | "sad" | "off" | "exit" | "return_to_caller";
+
+export interface VariableDecl {
+  type: VariableType;
+  scope: VariableScope;
+  description?: string;
+  example?: unknown;
+}
+
+export interface Guardrail {
+  id: string;
+  statement: string;
+}
+
+export interface SuccessCriterion {
+  id: string;
+  criterion: string;
+}
+
+export interface FaqEntry {
+  id: string;
+  question: string;
+  answer: string;
+  scripts?: Record<string, string>;
+}
+
+export interface GlossaryEntry {
+  id: string;
+  term: string;
+  definition: string;
+}
+
+export interface SourceEntry {
+  id: string;
+  name: string;
+  description: string;
+  type?: "rag" | "tool" | "api";
+}
+
+export interface TableField {
+  field: string;
+  description: string;
+  type: string;
+}
+
+export interface TableEntry {
+  id: string;
+  name: string;
+  purpose: string;
+  structure: TableField[];
+  rows: Record<string, unknown>[];
+  scaling_rule?: string;
+}
+
+export interface Knowledge {
+  faq?: FaqEntry[];
+  glossary?: GlossaryEntry[];
+  sources?: SourceEntry[];
+  tables?: TableEntry[];
+}
+
+export interface AgentMeta {
+  name: string;
+  purpose: string;
+  client?: string;
+  language?: string;
+  user_segments?: string;
+}
+
+export interface Agent {
+  $schema?: string;
+  id: string;
+  version: string;
+  meta: AgentMeta;
+  system_prompt?: string;
+  chatbot_initiates?: boolean;
+  variables?: Record<string, VariableDecl>;
+  guardrails?: Guardrail[];
+  knowledge?: Knowledge;
+  entry_flow_id: string;
+}
+
+export interface Condition {
+  id: string;
+  expression: string;
+  method: Method;
+}
+
+export interface Capture {
+  id: string;
+  variable: string;
+  type?: VariableType;
+  method: Method;
+  pattern?: string;
+  value?: unknown;
+}
+
+export interface UtteranceVariation {
+  id: string;
+  text: string;
+}
+
+export interface Utterance {
+  id: string;
+  language: string;
+  dialect?: string;
+  variations: UtteranceVariation[];
+}
+
+export interface TurnStep {
+  id: string;
+  type: "turn";
+  role: "agent" | "user";
+  label?: string;
+  content?: string;
+  variables_used?: string[];
+  condition?: Condition;
+  captures?: Capture[];
+  utterances?: Utterance[];
+}
+
+export type Step = TurnStep;
+
+export interface AssignValue {
+  method: Method;
+  value: unknown;
+}
+
+export interface ExitPath {
+  id: string;
+  type: ExitType;
+  condition?: Condition;
+  next_flow_id: string | null;
+  assigns?: Record<string, AssignValue>;
+}
+
+export interface Routing {
+  entry_conditions?: Condition[];
+  exit_paths: ExitPath[];
+}
+
+export interface Flow {
+  $schema?: string;
+  id: string;
+  version: string;
+  name: string;
+  description?: string;
+  type: FlowType;
+  scope?: ["global"] | string[];
+  variables?: Record<string, VariableDecl>;
+  steps?: Step[];
+  success_criteria?: SuccessCriterion[];
+  guardrails?: Guardrail[];
+  example?: string;
+  routing: Routing;
+}
+
+export interface Spec {
+  agent: Agent;
+  flows: Flow[];
+}

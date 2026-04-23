@@ -1,0 +1,137 @@
+# Runtime Translation Tables
+
+Mappings from the UX4 behavioral spec to each supported runtime. These document how the v1 schema maps to each runtime so that Phase 2 export work can be scoped accurately. **None of them ship in the MVP.** They inform the codegen pipeline (`lib/codegen/`, not yet built).
+
+For the schema these reference, see [SCHEMA.md](./SCHEMA.md).
+
+## Export Targets
+
+### Pipecat
+
+Pipecat uses a node-graph architecture. Each UX4 flow maps to a Pipecat node. Exit paths become function routing. The translation is structural and mechanical.
+
+| UX4 Artifact | Pipecat Equivalent |
+|---|---|
+| turn (agent) | LLM processor with `task_messages` |
+| turn (user) | User input frame / STT processor |
+| turn condition (`llm`) | LLM judgment in dialogue manager |
+| turn condition (`calculation`) | Deterministic expression in flow logic |
+| turn capture (`llm`) | LLM slot filling |
+| turn capture (`calculation`) | Expression-based slot derivation (includes pattern-matching subtype) |
+| turn capture (`direct`) | `SetSlot` with literal value |
+| tool (mcp) | MCP integration processor |
+| tool (rag) | Context aggregation step |
+| tool (api) | Custom action with HTTP call |
+| call | Flow transition via `FlowManager` |
+| exit path (`calculation`) | Function routing with decision block |
+| exit path (`llm`) | LLM-evaluated routing condition |
+
+Behavioral spec fields (guardrails, success criteria, personas) do not appear in Pipecat output — they are evaluation metadata that lives in UX4. The `pipecat` hints field on a flow (v1 only) passes directly to the generated node configuration. `context_strategy`, `respond_immediately`, `pre_actions`, and `post_actions` have no behavioral-spec equivalent and live in the hints field specifically to keep them out of the spec layer.
+
+The export process validates the flow graph before generating Pipecat JSON. Calculation conditions must use the defined expression syntax. Variable references must resolve. Variable names must be lowercase with underscores.
+
+### LiveKit
+
+LiveKit uses an instruction-and-tool architecture. The entire agent spec generates a single LiveKit agent with comprehensive instructions and `FunctionTool` definitions. The translation is compositional. No LiveKit-specific hints field is needed in the schema.
+
+| UX4 Artifact | LiveKit Equivalent |
+|---|---|
+| agent meta + guardrails | Agent instructions |
+| flow descriptions | Instructions fragments in order |
+| flow guardrails | Instructions constraints section |
+| turn (agent) | Instructions guidance |
+| turn (user) | Instructions expected behavior |
+| turn capture (`llm`) | LLM extraction in instructions |
+| turn capture (`calculation`) | `FunctionTool` with typed return |
+| turn capture (`direct`) | Hardcoded value in instructions |
+| tool (mcp) | `FunctionTool` with MCP connection |
+| tool (rag) | `FunctionTool` with retrieval logic |
+| tool (api) | `FunctionTool` with HTTP call |
+| call | Sub-instructions section |
+| exit path (`llm`) | Routing guidance in instructions |
+| exit path (`calculation`) | `FunctionTool` returning routing decision |
+| variables | Tool parameters and return types |
+| knowledge.faq | Instructions FAQ section |
+| knowledge.tables | Reference data in instructions |
+| knowledge.sources | `FunctionTool` definitions |
+| success_criteria | Evaluation only, not in output |
+| personas | Simulation only, not in output |
+
+### LangGraph
+
+LangGraph uses a graph-based execution model architecturally closest to UX4's flow model. UX4 flows become LangGraph nodes. Exit paths become edges. Variables become the typed state schema. LangGraph's human-in-the-loop interrupt patterns are relevant for compliance approval workflows in Phase 3.
+
+| UX4 Artifact | LangGraph Equivalent |
+|---|---|
+| agent | `StateGraph` with typed state schema |
+| flow | Graph node |
+| variables | State schema fields (typed) |
+| turn (agent) | Node function with LLM call |
+| turn (user) | Human input node |
+| turn capture (`llm`) | State update via LLM extraction |
+| turn capture (`calculation`) | State update via expression |
+| turn capture (`direct`) | Direct state assignment |
+| tool step | `ToolNode` with typed parameters |
+| call step | Subgraph invocation |
+| exit path (`calculation`) | Conditional edge with expression |
+| exit path (`llm`) | Conditional edge with LLM judgment |
+| guardrails | Node-level validation logic |
+| success_criteria | Evaluation only, not in output |
+| personas | Simulation only, not in output |
+
+Variable type declarations are especially important for LangGraph. Untyped variables default to string in the generated state schema.
+
+### OpenAI Agents SDK
+
+Instruction-and-tool based like LiveKit. The translation is compositional. Agent-level guardrails map directly to OpenAI SDK guardrails — the most direct schema mapping across all export targets. The OpenAI Agents SDK has built-in tracing that provides a natural post-deployment observability layer.
+
+| UX4 Artifact | OpenAI Agents SDK Equivalent |
+|---|---|
+| agent meta | Agent name and instructions |
+| agent guardrails | SDK guardrails (direct mapping) |
+| flow descriptions | Instructions sections |
+| turn (agent) | Instructions guidance |
+| turn (user) | Instructions expected behavior |
+| tool (mcp) | `FunctionTool` via MCP |
+| tool (api) | `FunctionTool` with HTTP call |
+| call step | Agent handoff to sub-agent |
+| variables | Tool parameters and context |
+| knowledge.faq | Instructions FAQ section |
+| knowledge.sources | `FunctionTool` definitions |
+| success_criteria | Evaluation only, not in output |
+| personas | Simulation only, not in output |
+
+## Import Sources
+
+### Voiceflow
+
+Voiceflow is an import source, not an export target. Run `voiceflow jsonschema` to get the authoritative schema before building the importer. Guardrails, success criteria, personas, and knowledge are absent from Voiceflow exports and must be authored in UX4 after import.
+
+| Voiceflow Concept | UX4 Equivalent |
+|---|---|
+| Assistant | Agent |
+| Diagram / Topic | Flow |
+| Speak step | Agent turn |
+| Choice step | Exit paths with conditions |
+| Capture step | User turn with captures |
+| API step | Tool step (api) |
+| Condition step | Exit path condition |
+| Variable | Variable in `variables` dictionary |
+| Intent / Utterances | User turn utterances |
+
+### Botpress
+
+Botpress exports carry JSON Schema typed variable definitions that map directly to UX4 variable type declarations, preserving type information through import.
+
+| Botpress Concept | UX4 Equivalent |
+|---|---|
+| Bot / Agent | Agent |
+| Workflow | Flow |
+| Node | Step in flow |
+| Card (speak) | Agent turn |
+| Card (capture) | User turn with captures |
+| Card (execute code) | Tool step (api) |
+| Condition | Exit path condition |
+| Variable (JSON Schema typed) | Variable with type declaration |
+| Knowledge Base | `knowledge.sources` entry |
+| Intent / Utterances | User turn utterances |
