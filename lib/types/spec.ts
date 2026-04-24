@@ -157,6 +157,7 @@ export interface Flow {
   steps?: Step[];
   success_criteria?: SuccessCriterion[];
   guardrails?: Guardrail[];
+  max_turns?: number;
   example?: string;
   routing: Routing;
 }

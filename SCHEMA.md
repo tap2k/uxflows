@@ -226,6 +226,8 @@ Variables exist at two levels.
     { "id": "string", "statement": "string" }
   ],
 
+  "max_turns": "number (optional; flow follows unconditional sad exit_path on exhaustion)",
+
   "example": "string (plain-text transcript; free-form format)",
 
   "routing": {
@@ -269,6 +271,7 @@ Variables exist at two levels.
 - **Symmetric turns** — agent and user turns share the same structure. Role determines interpretation.
 - **`routing.entry_conditions`** — when this flow should be active. For interrupt flows these are trigger phrases or intents. For sequential flows these are the conditions under which the routing layer enters the flow.
 - **`routing.exit_paths`** — how the flow ends. `next_flow_id` is the flow to enter next. `return_to_caller` is the special exit for interrupt flows, resuming whichever flow was interrupted. `assigns` produces variables that become available to the next flow as agent-level variables.
+- **`max_turns`** — optional integer. When set, the flow follows its unconditional sad `exit_path` (the "give up" branch) after user+agent turn pairs in this flow reach this count. Interrupts don't count. If no unconditional sad exit_path exists, the flow ends. Convention over configuration — no paired exit_path_id field.
 - **`example`** — optional plain-text transcript illustrating intended behavior for this flow. Free-form format (the author chooses the shape — e.g., `Agent: ...\nUser: ...`). Annotation-only: runtimes ignore it; simulation may consume it as a seeding hint but does not assert against it. Illustrative, not authoritative; the authoritative per-turn agent scripts live in `steps[].utterances`.
 
 ## Common Flow Compositions

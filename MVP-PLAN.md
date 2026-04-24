@@ -95,7 +95,8 @@ Fields:
   - When Scoped: multi-select flow picker (chips or checkbox list). Filter out self; don't bother filtering other interrupts.
 - `guardrails[]` — list of `{id, statement}` via reusable `ListEditor`
 - `success_criteria[]` — list of `{id, criterion}` via same `ListEditor`
-- **`example`** — textarea (plain-text transcript, free-form)
+- `max_turns` — optional integer input
+- `example` — textarea (plain-text transcript, free-form)
 
 **Files:** new `components/inspector/FlowInspector.tsx`, `components/inspector/ListEditor.tsx`, `components/inspector/FlowPicker.tsx`.
 
@@ -164,6 +165,7 @@ Persistent left drawer. Tabs:
 - **Deep graph validation** — variable-reference integrity in utterances, `interrupt.scope` members exist, `exit_path.assigns` target validity, `variables_used` on steps matches actual usage.
 - **v1 schema additions** — `tool` step, `call` step, `pipecat` hints. Canvas and inspector adapt when the schema lands.
 - **In-app parse step** replacing the external [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) workflow. External Claude conversation is good enough for MVP.
+- **Flow id rename with cascade update.** Ids are immutable in MVP; delete-and-recreate to change.
 
 ---
 
