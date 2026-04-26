@@ -31,13 +31,6 @@ export interface GlossaryEntry {
   definition: string;
 }
 
-export interface SourceEntry {
-  id: string;
-  name: string;
-  description: string;
-  type?: "rag" | "tool" | "api";
-}
-
 export interface TableField {
   field: string;
   description: string;
@@ -56,8 +49,18 @@ export interface TableEntry {
 export interface Knowledge {
   faq?: FaqEntry[];
   glossary?: GlossaryEntry[];
-  sources?: SourceEntry[];
   tables?: TableEntry[];
+}
+
+export type CapabilityKind = "retrieval" | "function";
+
+export interface Capability {
+  id: string;
+  name: string;
+  description: string;
+  kind: CapabilityKind;
+  inputs?: string[];
+  outputs?: string[];
 }
 
 export interface AgentMeta {
@@ -77,6 +80,7 @@ export interface Agent {
   chatbot_initiates?: boolean;
   variables?: Record<string, VariableDecl>;
   guardrails?: Guardrail[];
+  capabilities?: Capability[];
   knowledge?: Knowledge;
   entry_flow_id: string;
 }
@@ -127,11 +131,9 @@ export interface AssignValue {
   value: unknown;
 }
 
-export interface Action {
+export interface ExitPathAction {
   id: string;
-  name: string;
-  description?: string;
-  inputs?: string[];
+  capability_id: string;
 }
 
 export interface ExitPath {
@@ -140,7 +142,7 @@ export interface ExitPath {
   condition?: Condition;
   next_flow_id: string | null;
   assigns?: Record<string, AssignValue>;
-  actions?: Action[];
+  actions?: ExitPathAction[];
 }
 
 export interface FlowKnowledge {

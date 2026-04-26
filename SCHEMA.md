@@ -121,6 +121,17 @@ LLM conditions remain plain-language strings and are never emitted into generate
     { "id": "string", "statement": "string" }
   ],
 
+  "capabilities": [
+    {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "kind": "retrieval | function",
+      "inputs": ["variable_name"],
+      "outputs": ["variable_name"]
+    }
+  ],
+
   "knowledge": {
     "faq": [
       {
@@ -132,14 +143,6 @@ LLM conditions remain plain-language strings and are never emitted into generate
     ],
     "glossary": [
       { "id": "string", "term": "string", "definition": "string" }
-    ],
-    "sources": [
-      {
-        "id": "string",
-        "name": "string",
-        "description": "string",
-        "type": "rag | tool | api"
-      }
     ],
     "tables": [
       {
@@ -168,9 +171,9 @@ LLM conditions remain plain-language strings and are never emitted into generate
 - **`system_prompt`** — the agent's behavioral instructions as authored. Present when flows are not yet defined or when the prompt carries behavioral intent not yet decomposed into flows. Flows compile into prompt fragments that extend or replace this.
 - **`chatbot_initiates`** — whether the agent sends the first message or waits for the user.
 - **`guardrails`** — cross-cutting behavioral invariants evaluated against the full transcript. Each is a stable `id` and a single `statement` sentence. Conditional rules written inline as natural language ("If X, always Y"). Executable conditional routing belongs in interrupt flows, not guardrails.
+- **`capabilities`** — declared catalog of external integrations the agent can dispatch. Each capability has a stable `name` (the runtime dispatch identifier), a `description`, a `kind`, and canonical `inputs`/`outputs` variable names. `kind: retrieval` describes query-shaped capabilities that return passages or records (RAG, knowledge bases, FAQ retrieval). `kind: function` describes typed-args calls returning structured data or fire-and-forget side effects (REST APIs, MCP tools, native functions, CRM writes, SMS sends). `outputs` is omitted for fire-and-forget. Protocol details (MCP vs REST vs gRPC vs native) live in the execution layer, not the spec. Use sites: v1 `tool` steps reference a capability by id and bind outputs into variable scope; `routing.exit_paths[].actions` reference a capability by id and discard outputs.
 - **`knowledge.faq`** — high-confidence answers authored with the client. Optional per-language scripts capture the actual phrasing in each supported language.
 - **`knowledge.glossary`** — domain terms ensuring consistent terminology.
-- **`knowledge.sources`** — external capabilities declared by name, description, and type. The description tells the agent when to use this source.
 - **`knowledge.tables`** — structured lookup data (promo plans, fee schedules, branch hours). Each has a `purpose`, a `structure`, sample `rows`, and an optional `scaling_rule`.
 - **`entry_flow_id`** — the flow the conversation enters first.
 
@@ -245,9 +248,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
         "actions": [
           {
             "id": "string",
-            "name": "string",
-            "description": "string",
-            "inputs": ["variable_name"]
+            "capability_id": "string"
           }
         ]
       }
@@ -268,7 +269,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
 - **`knowledge.faq`** — flow-scoped FAQ entries. Same shape as agent-level `knowledge.faq`. Travels with the flow when reused across agents. At runtime, flow-level entries shadow agent-level entries that match the same question. Use agent-level for cross-flow defaults; use flow-level for entries that only make sense in this flow's context.
 - **`routing.entry_conditions`** — when this flow should be active. For interrupt flows: trigger phrases or intents. For sequential flows: rarely needed; entry follows the incoming edge.
 - **`routing.exit_paths`** — how the flow ends. `return_to_caller` is the special exit for interrupt flows, resuming the interrupted flow. `assigns` produces variables available to the next flow.
-- **`routing.exit_paths[].actions`** — non-conversational side effects fired when this exit is taken (e.g., write a record to a CRM, send a confirmation SMS). Each action declares a stable `name` that the runtime dispatches on — endpoints, headers, and credentials live in the `execution` object, not in the spec. `inputs` lists variable names the action consumes; lazy variable semantics apply. Distinct from v1 `tool` steps, which fire *during* the conversation; actions fire as a consequence of the terminal state.
+- **`routing.exit_paths[].actions`** — non-conversational side effects fired when this exit is taken (e.g., write a record to a CRM, send a confirmation SMS). Each entry references an `agent.capabilities[]` entry by `capability_id`. Outputs of the referenced capability (if any) are discarded — the conversational loop has resolved. Distinct from v1 `tool` steps, which dispatch the same capabilities *during* the conversation and bind outputs into variable scope; actions fire post-exit and are fire-and-forget.
 
 ---
 
@@ -379,14 +380,11 @@ Agent and user turns share the same structure. Role determines interpretation. A
 {
   "id": "string",
   "type": "tool",
-  "description": "string",
-  "tool_type": "mcp | rag | api",
-  "inputs": ["variable_name"],
-  "outputs": ["variable_name"],
-  "connection": "string",
-  "parameters": {}
+  "capability_id": "string"
 }
 ```
+
+References an `agent.capabilities[]` entry by id. The capability declares the dispatch `name`, `kind`, `inputs`, and `outputs`; the tool step inherits all of them. Outputs are bound into variable scope at this step. Protocol details (MCP vs REST vs native) live in the execution layer.
 
 #### Call Step
 

@@ -19,9 +19,10 @@ Pipecat uses a node-graph architecture. Each UX4 flow maps to a Pipecat node. Ex
 | turn capture (`llm`) | LLM slot filling |
 | turn capture (`calculation`) | Expression-based slot derivation (includes pattern-matching subtype) |
 | turn capture (`direct`) | `SetSlot` with literal value |
-| tool (mcp) | MCP integration processor |
-| tool (rag) | Context aggregation step |
-| tool (api) | Custom action with HTTP call |
+| capability (`kind: function`) | Custom action / function processor (MCP integration when bound, HTTP call otherwise) |
+| capability (`kind: retrieval`) | Context aggregation step |
+| tool step (references capability) | Function invocation in flow logic |
+| exit-path action (references capability) | `post_actions` on the originating node |
 | call | Flow transition via `FlowManager` |
 | exit path (`calculation`) | Function routing with decision block |
 | exit path (`llm`) | LLM-evaluated routing condition |
@@ -44,16 +45,16 @@ LiveKit uses an instruction-and-tool architecture. The entire agent spec generat
 | turn capture (`llm`) | LLM extraction in instructions |
 | turn capture (`calculation`) | `FunctionTool` with typed return |
 | turn capture (`direct`) | Hardcoded value in instructions |
-| tool (mcp) | `FunctionTool` with MCP connection |
-| tool (rag) | `FunctionTool` with retrieval logic |
-| tool (api) | `FunctionTool` with HTTP call |
+| capability (`kind: function`) | `FunctionTool` definition (MCP connection or HTTP call resolved at execution time) |
+| capability (`kind: retrieval`) | `FunctionTool` with retrieval logic |
+| tool step (references capability) | `FunctionTool` invocation in instructions |
+| exit-path action (references capability) | `FunctionTool` invoked at flow terminal state |
 | call | Sub-instructions section |
 | exit path (`llm`) | Routing guidance in instructions |
 | exit path (`calculation`) | `FunctionTool` returning routing decision |
 | variables | Tool parameters and return types |
 | knowledge.faq | Instructions FAQ section |
 | knowledge.tables | Reference data in instructions |
-| knowledge.sources | `FunctionTool` definitions |
 | personas | Simulation only, not in output |
 
 ### LangGraph
@@ -70,7 +71,10 @@ LangGraph uses a graph-based execution model architecturally closest to UX4's fl
 | turn capture (`llm`) | State update via LLM extraction |
 | turn capture (`calculation`) | State update via expression |
 | turn capture (`direct`) | Direct state assignment |
-| tool step | `ToolNode` with typed parameters |
+| capability (`kind: function`) | `ToolNode` with typed parameters |
+| capability (`kind: retrieval`) | `Retriever` node |
+| tool step (references capability) | `ToolNode` invocation |
+| exit-path action (references capability) | Terminal-node side effect (post-state-update) |
 | call step | Subgraph invocation |
 | exit path (`calculation`) | Conditional edge with expression |
 | exit path (`llm`) | Conditional edge with LLM judgment |
@@ -90,12 +94,13 @@ Instruction-and-tool based like LiveKit. The translation is compositional. Agent
 | flow descriptions | Instructions sections |
 | turn (agent) | Instructions guidance |
 | turn (user) | Instructions expected behavior |
-| tool (mcp) | `FunctionTool` via MCP |
-| tool (api) | `FunctionTool` with HTTP call |
+| capability (`kind: function`) | `FunctionTool` definition (MCP or HTTP resolved at execution time) |
+| capability (`kind: retrieval`) | `FunctionTool` with retrieval logic |
+| tool step (references capability) | `FunctionTool` invocation |
+| exit-path action (references capability) | `FunctionTool` invoked at handoff/termination |
 | call step | Agent handoff to sub-agent |
 | variables | Tool parameters and context |
 | knowledge.faq | Instructions FAQ section |
-| knowledge.sources | `FunctionTool` definitions |
 | personas | Simulation only, not in output |
 
 ## Import Sources
@@ -111,7 +116,7 @@ Voiceflow is an import source, not an export target. Run `voiceflow jsonschema` 
 | Speak step | Agent turn |
 | Choice step | Exit paths with conditions |
 | Capture step | User turn with captures |
-| API step | Tool step (api) |
+| API step | Capability (`kind: function`) + tool step reference |
 | Condition step | Exit path condition |
 | Variable | Variable in `variables` dictionary |
 | Intent / Utterances | User turn utterances |
@@ -127,8 +132,8 @@ Botpress exports carry JSON Schema typed variable definitions that map directly 
 | Node | Step in flow |
 | Card (speak) | Agent turn |
 | Card (capture) | User turn with captures |
-| Card (execute code) | Tool step (api) |
+| Card (execute code) | Capability (`kind: function`) + tool step reference |
 | Condition | Exit path condition |
 | Variable (JSON Schema typed) | Variable with type declaration |
-| Knowledge Base | `knowledge.sources` entry |
+| Knowledge Base | Capability (`kind: retrieval`) |
 | Intent / Utterances | User turn utterances |

@@ -38,7 +38,7 @@ Canvas-first, local-first, single-user.
 - **`personas` removed from schema.** Persona definitions live downstream in whatsupp2.
 - **`meta.languages`** — list of language codes. Drives translation table columns on each flow's scripts sheet.
 - **`user_segments` in `meta`.** Descriptive, not behavioral config.
-- **Channels** (phone numbers, URLs, emails) are plan-level variables, not `knowledge.sources` entries.
+- **Channels** (phone numbers, URLs, emails) are plan-level variables, not `agent.capabilities[]` entries.
 - **Interrupt return-bridging** stays as a guardrail. No new typed schema field.
 - **v1 `annotations` namespace** planned for node positions, colors, comments. Runtimes MUST ignore. Two export modes (authoring = includes annotations; runtime = strips them).
 
@@ -124,7 +124,7 @@ Fields:
   - `condition` — reusable `ConditionEditor` (method + expression)
   - `next_flow_id` — reuses `FlowPicker`
   - `assigns` — simple key-value editor ("add variable assignment")
-  - `actions[]` — list of `{id, name, description, inputs}` via reusable `ListEditor`. `inputs` is a comma-separated variable name list. Most relevant on terminal exits (`next_flow_id === null`); allowed on any exit.
+  - `actions[]` — references to `agent.capabilities[]` entries via a capability picker. Each row is `{id, capability_id}`. Most relevant on terminal exits (`next_flow_id === null`); allowed on any exit.
 - `ConditionEditor` is the reusable unit — also used by `routing.entry_conditions`.
 
 **Files:** new `components/inspector/EdgeInspector.tsx`, `components/inspector/ConditionEditor.tsx`.
@@ -135,6 +135,7 @@ Persistent left drawer. Tabs:
 
 - **Meta** — `name`, `purpose`, `client`, `languages` (list), `user_segments`, `system_prompt`, `chatbot_initiates`
 - **Guardrails** — `ListEditor`
+- **Capabilities** — per-entry editor: `name`, `description`, `kind` (radio: retrieval | function), `inputs[]`, `outputs[]` (optional). Drives the capability picker on the EdgeInspector and on tool steps.
 - **FAQ** — per-entry editor with optional `scripts.{lang}` per-language columns
 - **Glossary** — `ListEditor`-shaped
 - **Tables** — read-only view + JSON-textarea fallback for row edits; full CRUD defers post-MVP
@@ -156,6 +157,7 @@ Persistent left drawer. Tabs:
   - Broken `next_flow_id` references
   - Duplicate flow ids
   - `entry_flow_id` resolves to an existing flow
+  - `exit_path.actions[].capability_id` resolves to an existing `agent.capabilities[]` entry
 - Surfaces inline: red ring on offending canvas nodes, hover tooltip with reason.
 
 **Files:** new `lib/validation/graphRules.ts`; [components/canvas/FlowNode.tsx](./components/canvas/FlowNode.tsx) reads validation status from store.
