@@ -18,11 +18,6 @@ export interface Guardrail {
   statement: string;
 }
 
-export interface SuccessCriterion {
-  id: string;
-  criterion: string;
-}
-
 export interface FaqEntry {
   id: string;
   question: string;
@@ -162,7 +157,6 @@ export interface Flow {
   scripts?: Record<string, ScriptLine[]>;
   // v1: structured turn sequencing
   steps?: Step[];
-  success_criteria?: SuccessCriterion[];
   guardrails?: Guardrail[];
   max_turns?: number;
   example?: string;

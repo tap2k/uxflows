@@ -319,11 +319,8 @@ const flowHappyPathBau: Flow = {
       { id: "bau_s5", text: "Gracias por confirmar que realizarás el pago de {amount_plus_late_fee} pesos, que ya incluye el aumento del 10% sobre pago tardío de tu préstamo, el {ptp_date}. Al saldar tu préstamo, mejoras tu historial con Tala; además, reportaremos a la agencia de crédito que has liquidado el saldo, lo que te permitirá seguir creciendo y calificar para préstamos de mayor monto y con límites más altos en el futuro. Que tengas un excelente {time_of_day}, {customer_name}." },
     ],
   },
-  success_criteria: [
-    { id: "sc_concrete_ptp_within_5_days", criterion: "Call ends with full amount committed by dpd_plus_5_date OR a plan starting with ≥20% first installment by that date." },
-    { id: "sc_identity_confirmed", criterion: "Call does not progress past identity validation without confirmation against customer_full_name." },
-    { id: "sc_recording_disclosed", criterion: "Recording disclosure given before identity validation completes." },
-    { id: "sc_bureau_context_communicated", criterion: "Close states the bureau is aware and that paying will unlock higher future limits." },
+  guardrails: [
+    { id: "fgr_bau_bureau_context_at_close", statement: "Close states the bureau is aware and that paying will unlock higher future limits." },
   ],
   example: `Agent: Hola, Bethy. ¡Buenos días! ¿Cómo estás hoy?
 User: Bien, gracias.

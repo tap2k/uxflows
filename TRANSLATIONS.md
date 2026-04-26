@@ -26,7 +26,7 @@ Pipecat uses a node-graph architecture. Each UX4 flow maps to a Pipecat node. Ex
 | exit path (`calculation`) | Function routing with decision block |
 | exit path (`llm`) | LLM-evaluated routing condition |
 
-Behavioral spec fields (guardrails, success criteria, personas) do not appear in Pipecat output — they are evaluation metadata that lives in UX4. The `pipecat` hints field on a flow (v1 only) passes directly to the generated node configuration. `context_strategy`, `respond_immediately`, `pre_actions`, and `post_actions` have no behavioral-spec equivalent and live in the hints field specifically to keep them out of the spec layer.
+Behavioral spec fields (guardrails, personas) do not appear in Pipecat output — they are evaluation metadata that lives in UX4. The `pipecat` hints field on a flow (v1 only) passes directly to the generated node configuration. `context_strategy`, `respond_immediately`, `pre_actions`, and `post_actions` have no behavioral-spec equivalent and live in the hints field specifically to keep them out of the spec layer.
 
 The export process validates the flow graph before generating Pipecat JSON. Calculation conditions must use the defined expression syntax. Variable references must resolve. Variable names must be lowercase with underscores.
 
@@ -54,7 +54,6 @@ LiveKit uses an instruction-and-tool architecture. The entire agent spec generat
 | knowledge.faq | Instructions FAQ section |
 | knowledge.tables | Reference data in instructions |
 | knowledge.sources | `FunctionTool` definitions |
-| success_criteria | Evaluation only, not in output |
 | personas | Simulation only, not in output |
 
 ### LangGraph
@@ -76,7 +75,6 @@ LangGraph uses a graph-based execution model architecturally closest to UX4's fl
 | exit path (`calculation`) | Conditional edge with expression |
 | exit path (`llm`) | Conditional edge with LLM judgment |
 | guardrails | Node-level validation logic |
-| success_criteria | Evaluation only, not in output |
 | personas | Simulation only, not in output |
 
 Variable type declarations are especially important for LangGraph. Untyped variables default to string in the generated state schema.
@@ -98,14 +96,13 @@ Instruction-and-tool based like LiveKit. The translation is compositional. Agent
 | variables | Tool parameters and context |
 | knowledge.faq | Instructions FAQ section |
 | knowledge.sources | `FunctionTool` definitions |
-| success_criteria | Evaluation only, not in output |
 | personas | Simulation only, not in output |
 
 ## Import Sources
 
 ### Voiceflow
 
-Voiceflow is an import source, not an export target. Run `voiceflow jsonschema` to get the authoritative schema before building the importer. Guardrails, success criteria, personas, and knowledge are absent from Voiceflow exports and must be authored in UX4 after import.
+Voiceflow is an import source, not an export target. Run `voiceflow jsonschema` to get the authoritative schema before building the importer. Guardrails, personas, and knowledge are absent from Voiceflow exports and must be authored in UX4 after import.
 
 | Voiceflow Concept | UX4 Equivalent |
 |---|---|

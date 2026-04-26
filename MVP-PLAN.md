@@ -99,7 +99,6 @@ Fields:
   - When Scoped: multi-select flow picker (chips or checkbox list). Filter out self.
 - `instructions` — textarea (behavioral prose)
 - `guardrails[]` — list of `{id, statement}` via reusable `ListEditor`
-- `success_criteria[]` — list of `{id, criterion}` via same `ListEditor`
 - `max_turns` — optional integer input
 - `example` — textarea (plain-text transcript, free-form)
 - Button: "Open scripts sheet"

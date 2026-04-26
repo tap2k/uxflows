@@ -19,7 +19,6 @@ Nodes = flows
 - Scripts (per-language utterances → translation table)
 - Example transcript
 - Guardrails
-- Success criteria (list)
 - Max turns
 - Type (happy / sad / off / utility / interrupt)
 
@@ -199,10 +198,6 @@ LLM conditions remain plain-language strings and are never emitted into generate
     ]
   },
 
-  "success_criteria": [
-    { "id": "string", "criterion": "string" }
-  ],
-
   "guardrails": [
     { "id": "string", "statement": "string" }
   ],
@@ -247,8 +242,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
 - **`scope`** — meaningful for `interrupt` flows only. `["global"]` allows the interrupt to fire from any flow. A list of flow IDs scopes it to specific flows. Omitted for non-interrupt flows.
 - **`instructions`** — behavioral prose directing the LLM: what to do, how to behave, what to ask. Compiles into a system prompt fragment for this flow. Free-form.
 - **`scripts`** — per-language utterances for this flow. Keys are language codes from `agent.meta.languages`. Each entry is an ordered list of utterances the agent may say, with stable IDs for reference and translation management. The translation table view across all flows is derived from these.
-- **`success_criteria`** — list of plain-language strings describing what "done well" looks like. Evaluation metadata; not emitted to runtimes.
-- **`guardrails`** — flow-scoped behavioral invariants. Same structure as agent-level guardrails but apply only within this flow.
+- **`guardrails`** — flow-scoped behavioral invariants. Same structure as agent-level guardrails but apply only within this flow. "Done well" expectations belong here when they are universal to the flow (e.g., "explained the disclosure before collecting consent", "used warm tone"). Reaching the right outcome is the job of `routing.exit_paths` — taking a `happy` exit means the flow's success condition was met. Test-specific expectations (e.g., "for an irate caller, used de-escalation language") live at the scenario level in whatsupp2, not on the flow.
 - **`max_turns`** — optional integer. On exhaustion, the flow follows its unconditional sad exit path. Interrupts don't count toward the turn limit. Convention over configuration — no paired exit_path_id field.
 - **`example`** — optional plain-text transcript illustrating intended behavior. Annotation-only: runtimes ignore it. Simulation may use it as a seeding hint but does not assert against it.
 - **`routing.entry_conditions`** — when this flow should be active. For interrupt flows: trigger phrases or intents. For sequential flows: rarely needed; entry follows the incoming edge.
@@ -269,7 +263,7 @@ Optional enrichment (type, scope, description, example) defers to v1.
 ## Common Flow Compositions
 
 - **Conversational flow** — `instructions` + `scripts`. The default.
-- **Free-form node** — `instructions` only, no scripts. The LLM handles conversation freely within the flow-level guardrails and success criteria.
+- **Free-form node** — `instructions` only, no scripts. The LLM handles conversation freely within the flow-level guardrails.
 - **Interrupt flow** — `type: interrupt` with `scope: ["global"]` or a list of flow IDs. Entry conditions match trigger phrases or intents. Exit paths use `return_to_caller` to resume the interrupted flow.
 - **Deterministic call tree** — calculation conditions on exit paths, direct assigns. No LLM judgment in routing. Compatible with IVR and DTMF handling.
 - **Tool-augmented / sub-flow orchestrator** — requires v1 step types. Not supported in v0.
