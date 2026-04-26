@@ -69,7 +69,7 @@ export interface AgentMeta {
   name: string;
   purpose: string;
   client?: string;
-  language?: string;
+  languages?: string[];
   user_segments?: string;
 }
 
@@ -145,6 +145,11 @@ export interface Routing {
   exit_paths: ExitPath[];
 }
 
+export interface ScriptLine {
+  id: string;
+  text: string;
+}
+
 export interface Flow {
   $schema?: string;
   id: string;
@@ -153,7 +158,9 @@ export interface Flow {
   description?: string;
   type: FlowType;
   scope?: ["global"] | string[];
-  variables?: Record<string, VariableDecl>;
+  instructions?: string;
+  scripts?: Record<string, ScriptLine[]>;
+  // v1: structured turn sequencing
   steps?: Step[];
   success_criteria?: SuccessCriterion[];
   guardrails?: Guardrail[];
