@@ -247,7 +247,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
 - **`guardrails`** — flow-scoped behavioral invariants. Same structure as agent-level guardrails but apply only within this flow. "Done well" expectations belong here when they are universal to the flow (e.g., "explained the disclosure before collecting consent", "used warm tone"). Reaching the right outcome is the job of `routing.exit_paths` — taking a `happy` exit means the flow's success condition was met. Test-specific expectations (e.g., "for an irate caller, used de-escalation language") live at the scenario level in whatsupp2, not on the flow.
 - **`max_turns`** — optional integer. On exhaustion, the flow follows its unconditional sad exit path. Interrupts don't count toward the turn limit. Convention over configuration — no paired exit_path_id field.
 - **`example`** — optional plain-text transcript illustrating intended behavior. Annotation-only: runtimes ignore it. Simulation may use it as a seeding hint but does not assert against it.
-- **`knowledge.faq`** — flow-scoped FAQ entries. Same shape as agent-level `knowledge.faq`. Travels with the flow when reused across agents. At runtime, flow-level entries shadow agent-level entries that match the same question. Use agent-level for cross-flow defaults; use flow-level for entries that only make sense in this flow's context.
+- **`knowledge.faq`** — flow-scoped FAQ entries. Same shape as agent-level `knowledge.faq`. Travels with the flow when reused across agents. v0 doesn't define dispatch semantics for FAQ — entries are authored content the consuming runtime is free to merge or prefer however it chooses. The authorial distinction: use agent-level for cross-flow defaults the agent can answer anywhere; use flow-level for entries that only make sense in this flow's context (e.g., questions about a verification mechanic that's only invoked here).
 - **`routing.entry_conditions`** — when this flow should be active. For interrupt flows: trigger phrases or intents. For sequential flows: rarely needed; entry follows the incoming edge.
 - **`routing.exit_paths`** — how the flow ends. `return_to_caller` is the special exit for interrupt flows, resuming the interrupted flow. `assigns` produces variables available to the next flow.
 
@@ -333,6 +333,7 @@ v1 adds an optional `capabilities` array to the agent envelope. A capability is 
 }
 ```
 
+- **`id` vs `name`** — `id` is editor-generated and spec-internal: it's what other parts of the spec reference (e.g., `exit_path.actions[].capability_id`) and what comments attach to. `name` is author-controlled, human-readable (snake_case), and is what the execution layer dispatches on. Different specs (versioned variants of the same agent) can share a `name` even when their editor-generated `id`s differ — the dispatch identifier stays stable across spec revisions. Same pattern as `knowledge.glossary`, `knowledge.tables`, etc., where `id` is the reference handle and `name`/`term` is the author-facing label.
 - **`name`** — stable runtime dispatch identifier (snake_case). The execution layer maps `name` to a concrete integration (MCP server, REST endpoint, native function, RAG pipeline). Endpoints, headers, and credentials never live in the spec.
 - **`kind: retrieval`** — query-shaped, returns passages or records (RAG, knowledge bases, FAQ retrieval).
 - **`kind: function`** — typed-args call returning structured data, or fire-and-forget side effect (CRM writes, SMS sends, generic tool calls). `outputs` omitted for fire-and-forget.
@@ -440,13 +441,12 @@ Each entry references a `capability_id` from `agent.capabilities[]`. Outputs of 
   "pipecat": {
     "context_strategy": "APPEND | RESET",
     "respond_immediately": true,
-    "pre_actions": [],
-    "post_actions": []
+    "pre_actions": []
   }
 }
 ```
 
-Pipecat-specific runtime hints with no behavioral-spec equivalent. Passes through verbatim to generated Pipecat node configuration.
+Pipecat-specific runtime hints. `context_strategy`, `respond_immediately`, and `pre_actions` (which fire before the node's LLM completion — e.g., audible hold tone, context priming) have no behavioral-spec analogue and pass through verbatim to generated Pipecat node configuration. Post-node side effects are not in this hints field — express them as `routing.exit_paths[].actions` referencing capabilities, which gives per-exit conditional dispatch instead of unconditional post-node firing.
 
 ---
 

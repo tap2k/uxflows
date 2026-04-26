@@ -22,12 +22,12 @@ Pipecat uses a node-graph architecture. Each UX4 flow maps to a Pipecat node. Ex
 | capability (`kind: function`) | Custom action / function processor (MCP integration when bound, HTTP call otherwise) |
 | capability (`kind: retrieval`) | Context aggregation step |
 | tool step (references capability) | Function invocation in flow logic |
-| exit-path action (references capability) | `post_actions` on the originating node |
+| exit-path action (references capability) | Function invocation on the originating node's terminal transition |
 | call | Flow transition via `FlowManager` |
 | exit path (`calculation`) | Function routing with decision block |
 | exit path (`llm`) | LLM-evaluated routing condition |
 
-Behavioral spec fields (guardrails, personas) do not appear in Pipecat output — they are evaluation metadata that lives in UX4. The `pipecat` hints field on a flow (v1 only) passes directly to the generated node configuration. `context_strategy`, `respond_immediately`, `pre_actions`, and `post_actions` have no behavioral-spec equivalent and live in the hints field specifically to keep them out of the spec layer.
+Behavioral spec fields (guardrails, personas) do not appear in Pipecat output — they are evaluation metadata that lives in UX4. The `pipecat` hints field on a flow (v1 only) passes directly to the generated node configuration. `context_strategy`, `respond_immediately`, and `pre_actions` have no behavioral-spec equivalent and live in the hints field specifically to keep them out of the spec layer. Post-node side effects are expressed as `exit_path.actions` referencing capabilities, not as a Pipecat-specific hint.
 
 The export process validates the flow graph before generating Pipecat JSON. Calculation conditions must use the defined expression syntax. Variable references must resolve. Variable names must be lowercase with underscores.
 

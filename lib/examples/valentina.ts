@@ -177,6 +177,16 @@ const agent: Spec["agent"] = {
           "es-MX": "No. Únicamente se puede pagar en pesos mexicanos.",
         },
       },
+      {
+        id: "faq_late_fee_amount",
+        question: "¿Cuánto es el cargo por pago tardío?",
+        answer:
+          "El cargo por demora equivale al 10% del monto total del préstamo y se aplica si no pagas antes del DPD3.",
+        scripts: {
+          "es-MX":
+            "El cargo por demora equivale al 10% del monto total del préstamo y se aplica si no pagas antes del DPD3.",
+        },
+      },
     ],
     glossary: [
       { id: "gloss_app", term: "App", definition: "The Tala mobile application." },
@@ -310,9 +320,6 @@ const flowHappyPathBau: Flow = {
       { id: "bau_s5", text: "Gracias por confirmar que realizarás el pago de {amount_plus_late_fee} pesos, que ya incluye el aumento del 10% sobre pago tardío de tu préstamo, el {ptp_date}. Al saldar tu préstamo, mejoras tu historial con Tala; además, reportaremos a la agencia de crédito que has liquidado el saldo, lo que te permitirá seguir creciendo y calificar para préstamos de mayor monto y con límites más altos en el futuro. Que tengas un excelente {time_of_day}, {customer_name}." },
     ],
   },
-  guardrails: [
-    { id: "fgr_bau_bureau_context_at_close", statement: "Close states the bureau is aware and that paying will unlock higher future limits." },
-  ],
   knowledge: {
     faq: [
       {
@@ -323,16 +330,6 @@ const flowHappyPathBau: Flow = {
         scripts: {
           "es-MX":
             "Una vez liquides tu préstamo actual a tiempo, el aumento se activa en tu siguiente solicitud.",
-        },
-      },
-      {
-        id: "faq_bau_late_fee_amount",
-        question: "¿Cuánto es el cargo por pago tardío?",
-        answer:
-          "El cargo por demora equivale al 10% del monto total del préstamo y se aplica si no pagas antes del DPD3.",
-        scripts: {
-          "es-MX":
-            "El cargo por demora equivale al 10% del monto total del préstamo y se aplica si no pagas antes del DPD3.",
         },
       },
     ],
