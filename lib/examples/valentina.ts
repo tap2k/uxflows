@@ -185,7 +185,6 @@ const agent: Spec["agent"] = {
   knowledge: {
     faq: [
       {
-        id: "faq_pay_cash",
         question: "Can I pay in cash?",
         answer:
           "Yes, at any OXXO or Paynet store using the reference number generated in the Tala app.",
@@ -194,7 +193,6 @@ const agent: Spec["agent"] = {
         },
       },
       {
-        id: "faq_credit_bureau",
         question: "Will you send me to the credit bureau?",
         answer:
           "Tala works with customers before escalation; paying quickly protects credit history. Never confirms or denies current bureau status.",
@@ -203,7 +201,6 @@ const agent: Spec["agent"] = {
         },
       },
       {
-        id: "faq_payroll_deduction",
         question: "Will you deduct from payroll?",
         answer: "No — Tala never deducts from payroll.",
         scripts: {
@@ -211,7 +208,6 @@ const agent: Spec["agent"] = {
         },
       },
       {
-        id: "faq_payment_reflection_time",
         question: "How long does it take for my payment to reflect?",
         answer: "Transfers: minutes. OXXO/Paynet: 5–10 minutes after payment.",
         scripts: {
@@ -219,57 +215,43 @@ const agent: Spec["agent"] = {
         },
       },
       {
-        id: "faq_pay_dollars",
         question: "Can I pay in US dollars?",
         answer: "No — only Mexican pesos.",
-        scripts: {
-          "es-MX": "No. Únicamente se puede pagar en pesos mexicanos.",
-        },
       },
       {
-        id: "faq_late_fee_amount",
         question: "¿Cuánto es el cargo por pago tardío?",
         answer:
           "El cargo por demora equivale al 10% del monto total del préstamo y se aplica si no pagas antes del DPD3.",
-        scripts: {
-          "es-MX":
-            "El cargo por demora equivale al 10% del monto total del préstamo y se aplica si no pagas antes del DPD3.",
-        },
       },
     ],
     glossary: [
-      { id: "gloss_app", term: "App", definition: "The Tala mobile application." },
+      { term: "App", definition: "The Tala mobile application." },
       {
-        id: "gloss_loan",
         term: "Préstamo",
         definition: "The product. Always 'préstamo' in customer communications — regulatory.",
       },
       {
-        id: "gloss_late_fee",
         term: "Cargo por demora",
         definition: "One-time 10% late fee; already applied by DPD31. Does not compound.",
       },
       {
-        id: "gloss_promise_to_pay",
         term: "Promesa de pago",
         definition:
           "Committed new payment date. Both full-payment PTPs and first installments of a plan are logged as PTPs.",
       },
       {
-        id: "gloss_credit_bureau",
         term: "Buró de crédito",
         definition: "Mexican credit bureau; aware of the delinquency by DPD31.",
       },
       {
-        id: "gloss_grace_period",
         term: "Periodo de gracia",
         definition: "Internal term. Never used with customers.",
       },
-      { id: "gloss_condusef", term: "Condusef", definition: "Mexican financial regulator." },
-      { id: "gloss_clabe", term: "CLABE", definition: "Mexican standardized bank account number for transfers." },
-      { id: "gloss_dpd", term: "DPD", definition: "Days past due." },
-      { id: "gloss_broken_promise", term: "Broken Promise", definition: "Customer who gave a PTP in pre-due and missed it." },
-      { id: "gloss_bau", term: "BAU", definition: "Business as usual — first DPD31 contact." },
+      { term: "Condusef", definition: "Mexican financial regulator." },
+      { term: "CLABE", definition: "Mexican standardized bank account number for transfers." },
+      { term: "DPD", definition: "Days past due." },
+      { term: "Broken Promise", definition: "Customer who gave a PTP in pre-due and missed it." },
+      { term: "BAU", definition: "Business as usual — first DPD31 contact." },
     ],
     tables: [
       {
@@ -337,13 +319,13 @@ const flowEntryRouter: Flow = {
       {
         id: "xp_router_bau",
         type: "happy",
-        condition: { id: "xp_router_bau_cond", expression: 'segment == "bau"', method: "calculation" },
+        condition: { expression: 'segment == "bau"', method: "calculation" },
         next_flow_id: "flow_happy_path_bau",
       },
       {
         id: "xp_router_broken_promise",
         type: "happy",
-        condition: { id: "xp_router_broken_promise_cond", expression: 'segment == "broken_promise"', method: "calculation" },
+        condition: { expression: 'segment == "broken_promise"', method: "calculation" },
         next_flow_id: "flow_happy_path_broken_promise",
       },
     ],
@@ -372,14 +354,9 @@ const flowHappyPathBau: Flow = {
   knowledge: {
     faq: [
       {
-        id: "faq_bau_when_increase_available",
         question: "¿Cuándo estará disponible mi aumento de límite?",
         answer:
           "Una vez liquides tu préstamo actual a tiempo, el aumento se activa en tu siguiente solicitud.",
-        scripts: {
-          "es-MX":
-            "Una vez liquides tu préstamo actual a tiempo, el aumento se activa en tu siguiente solicitud.",
-        },
       },
     ],
   },
@@ -394,35 +371,35 @@ User: Sí, mañana sin falta.
 Agent: Gracias por confirmar que realizarás el pago de 2200 pesos, que ya incluye el aumento del 10% sobre pago tardío, el 6 de marzo. Al saldar tu préstamo, mejoras tu historial con Tala; además, reportaremos a la agencia de crédito que has liquidado el saldo. Que tengas un excelente día, Bethy.`,
   routing: {
     entry_conditions: [
-      { id: "bau_entry", expression: 'segment == "bau"', method: "calculation" },
+      { expression: 'segment == "bau"', method: "calculation" },
     ],
     exit_paths: [
       {
         id: "xp_bau_success",
         type: "happy",
-        condition: { id: "xp_bau_success_cond", expression: "Customer committed to full payment by dpd_plus_5_date.", method: "llm" },
+        condition: { expression: "Customer committed to full payment by dpd_plus_5_date.", method: "llm" },
         next_flow_id: null,
         actions: [
-          { id: "act_bau_set_ptp", capability_id: "cap_set_ptp_in_care" },
-          { id: "act_bau_confirm_sms", capability_id: "cap_send_ptp_confirmation" },
+          { capability_id: "cap_set_ptp_in_care" },
+          { capability_id: "cap_send_ptp_confirmation" },
         ],
       },
       {
         id: "xp_bau_to_negotiation",
         type: "sad",
-        condition: { id: "xp_bau_to_negotiation_cond", expression: "Customer cannot pay in full today or tomorrow.", method: "llm" },
+        condition: { expression: "Customer cannot pay in full today or tomorrow.", method: "llm" },
         next_flow_id: "flow_negotiation_payment_plan",
       },
       {
         id: "xp_bau_to_sensitive",
         type: "sad",
-        condition: { id: "xp_bau_to_sensitive_cond", expression: "Customer cites death, hospitalization, or serious illness as the reason for non-payment.", method: "llm" },
+        condition: { expression: "Customer cites death, hospitalization, or serious illness as the reason for non-payment.", method: "llm" },
         next_flow_id: "flow_sensitive_empathy",
       },
       {
         id: "xp_bau_to_no_path",
         type: "sad",
-        condition: { id: "xp_bau_to_no_path_cond", expression: "Answerer is not the customer.", method: "llm" },
+        condition: { expression: "Answerer is not the customer.", method: "llm" },
         next_flow_id: "flow_no_path",
       },
     ],
@@ -450,31 +427,31 @@ const flowHappyPathBrokenPromise: Flow = {
   },
   routing: {
     entry_conditions: [
-      { id: "bp_entry", expression: 'segment == "broken_promise"', method: "calculation" },
+      { expression: 'segment == "broken_promise"', method: "calculation" },
     ],
     exit_paths: [
       {
         id: "xp_bp_success",
         type: "happy",
-        condition: { id: "xp_bp_success_cond", expression: "Customer committed to full payment by dpd_plus_5_date.", method: "llm" },
+        condition: { expression: "Customer committed to full payment by dpd_plus_5_date.", method: "llm" },
         next_flow_id: null,
       },
       {
         id: "xp_bp_to_negotiation",
         type: "sad",
-        condition: { id: "xp_bp_to_negotiation_cond", expression: "Customer cannot pay in full today or tomorrow.", method: "llm" },
+        condition: { expression: "Customer cannot pay in full today or tomorrow.", method: "llm" },
         next_flow_id: "flow_negotiation_payment_plan",
       },
       {
         id: "xp_bp_to_sensitive",
         type: "sad",
-        condition: { id: "xp_bp_to_sensitive_cond", expression: "Customer cites death, hospitalization, or serious illness.", method: "llm" },
+        condition: { expression: "Customer cites death, hospitalization, or serious illness.", method: "llm" },
         next_flow_id: "flow_sensitive_empathy",
       },
       {
         id: "xp_bp_to_no_path",
         type: "sad",
-        condition: { id: "xp_bp_to_no_path_cond", expression: "Answerer is not the customer.", method: "llm" },
+        condition: { expression: "Answerer is not the customer.", method: "llm" },
         next_flow_id: "flow_no_path",
       },
     ],
@@ -513,20 +490,20 @@ const flowNegotiation: Flow = {
       {
         id: "xp_neg_accepted",
         type: "happy",
-        condition: { id: "xp_neg_accepted_cond", expression: "Customer accepted a valid plan (≥ 20% first installment, first payment ≤ dpd_plus_5_date, plan ≤ 30 days).", method: "llm" },
+        condition: { expression: "Customer accepted a valid plan (≥ 20% first installment, first payment ≤ dpd_plus_5_date, plan ≤ 30 days).", method: "llm" },
         next_flow_id: null,
         actions: [
-          { id: "act_neg_set_plan", capability_id: "cap_set_payment_plan_in_care" },
-          { id: "act_neg_confirm_sms", capability_id: "cap_send_plan_confirmation" },
+          { capability_id: "cap_set_payment_plan_in_care" },
+          { capability_id: "cap_send_plan_confirmation" },
         ],
       },
       {
         id: "xp_neg_escalate",
         type: "sad",
-        condition: { id: "xp_neg_escalate_cond", expression: "Counter < 20%, first payment > dpd_plus_5_date, plan > 30 days, cannot pay anything, or repeatedly vague after two prompts.", method: "llm" },
+        condition: { expression: "Counter < 20%, first payment > dpd_plus_5_date, plan > 30 days, cannot pay anything, or repeatedly vague after two prompts.", method: "llm" },
         next_flow_id: null,
         actions: [
-          { id: "act_neg_log_handoff", capability_id: "cap_log_human_handoff" },
+          { capability_id: "cap_log_human_handoff" },
         ],
       },
     ],
@@ -554,19 +531,19 @@ const flowSensitiveEmpathy: Flow = {
       {
         id: "xp_sens_commit",
         type: "happy",
-        condition: { id: "xp_sens_commit_cond", expression: "Customer committed to pay within 5 days.", method: "llm" },
+        condition: { expression: "Customer committed to pay within 5 days.", method: "llm" },
         next_flow_id: null,
       },
       {
         id: "xp_sens_to_negotiation",
         type: "sad",
-        condition: { id: "xp_sens_to_negotiation_cond", expression: "Customer themselves asks for a payment plan.", method: "llm" },
+        condition: { expression: "Customer themselves asks for a payment plan.", method: "llm" },
         next_flow_id: "flow_negotiation_payment_plan",
       },
       {
         id: "xp_sens_escalate",
         type: "sad",
-        condition: { id: "xp_sens_escalate_cond", expression: "Customer declined or offered a date beyond dpd_plus_5_date.", method: "llm" },
+        condition: { expression: "Customer declined or offered a date beyond dpd_plus_5_date.", method: "llm" },
         next_flow_id: null,
       },
     ],

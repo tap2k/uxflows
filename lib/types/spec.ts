@@ -1,8 +1,4 @@
-// Plain TS types mirroring SCHEMA.md. v0 covers the agent envelope (incl.
-// capability catalog), flows with instructions/scripts/guardrails/knowledge,
-// and routing with exit_paths (incl. post-exit action references). v1
-// additive fields (steps, typed variable declarations) are optional and only
-// populated in v1 specs. TypeBox/Ajv validation will layer on later.
+// TS types mirroring SCHEMA.md. v1 additive fields are optional. TypeBox/Ajv validation deferred.
 
 export type Method = "llm" | "calculation" | "direct";
 export type VariableType = "string" | "number" | "boolean" | "enum";
@@ -23,14 +19,12 @@ export interface Guardrail {
 }
 
 export interface FaqEntry {
-  id: string;
   question: string;
   answer: string;
   scripts?: Record<string, string>;
 }
 
 export interface GlossaryEntry {
-  id: string;
   term: string;
   definition: string;
 }
@@ -90,7 +84,6 @@ export interface Agent {
 }
 
 export interface Condition {
-  id: string;
   expression: string;
   method: Method;
 }
@@ -136,7 +129,6 @@ export interface AssignValue {
 }
 
 export interface ExitPathAction {
-  id: string;
   capability_id: string;
 }
 
