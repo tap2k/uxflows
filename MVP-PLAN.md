@@ -38,7 +38,7 @@ Canvas-first, local-first, single-user.
 - **`personas` removed from schema.** Persona definitions live downstream in whatsupp2.
 - **`meta.languages`** — list of language codes. Drives translation table columns on each flow's scripts sheet.
 - **`user_segments` in `meta`.** Descriptive, not behavioral config.
-- **Channels** (phone numbers, URLs, emails) are plan-level variables, not `agent.capabilities[]` entries.
+- **Channels** (phone numbers, URLs, emails) are plan-level variables, not capability entries.
 - **Interrupt return-bridging** stays as a guardrail. No new typed schema field.
 - **v1 `annotations` namespace** planned for node positions, colors, comments. Runtimes MUST ignore. Two export modes (authoring = includes annotations; runtime = strips them).
 
@@ -124,7 +124,6 @@ Fields:
   - `condition` — reusable `ConditionEditor` (method + expression)
   - `next_flow_id` — reuses `FlowPicker`
   - `assigns` — simple key-value editor ("add variable assignment")
-  - `actions[]` — references to `agent.capabilities[]` entries via a capability picker. Each row is `{id, capability_id}`. Most relevant on terminal exits (`next_flow_id === null`); allowed on any exit.
 - `ConditionEditor` is the reusable unit — also used by `routing.entry_conditions`.
 
 **Files:** new `components/inspector/EdgeInspector.tsx`, `components/inspector/ConditionEditor.tsx`.
@@ -135,7 +134,6 @@ Persistent left drawer. Tabs:
 
 - **Meta** — `name`, `purpose`, `client`, `languages` (list), `user_segments`, `system_prompt`, `chatbot_initiates`
 - **Guardrails** — `ListEditor`
-- **Capabilities** — per-entry editor: `name`, `description`, `kind` (radio: retrieval | function), `inputs[]`, `outputs[]` (optional). Drives the capability picker on the EdgeInspector and on tool steps.
 - **FAQ** — per-entry editor with optional `scripts.{lang}` per-language columns
 - **Glossary** — `ListEditor`-shaped
 - **Tables** — read-only view + JSON-textarea fallback for row edits; full CRUD defers post-MVP
@@ -157,7 +155,6 @@ Persistent left drawer. Tabs:
   - Broken `next_flow_id` references
   - Duplicate flow ids
   - `entry_flow_id` resolves to an existing flow
-  - `exit_path.actions[].capability_id` resolves to an existing `agent.capabilities[]` entry
 - Surfaces inline: red ring on offending canvas nodes, hover tooltip with reason.
 
 **Files:** new `lib/validation/graphRules.ts`; [components/canvas/FlowNode.tsx](./components/canvas/FlowNode.tsx) reads validation status from store.
@@ -172,7 +169,7 @@ Persistent left drawer. Tabs:
 - **v1 typed variable declarations** — type, scope, description enrichment on variables. Variables are implicit in v0.
 - **Full `knowledge.tables` CRUD editor** (rows × structure). JSON-textarea fallback is MVP-sufficient.
 - **Deep graph validation** — variable-reference integrity, `interrupt.scope` members exist, `exit_path.assigns` target validity.
-- **v1 schema additions** — `tool` step, `call` step, `pipecat` hints. Canvas and inspector adapt when the schema lands.
+- **v1 schema additions** — `agent.capabilities[]` catalog, `tool` step, `call` step, `exit_path.actions[]` (post-exit dispatch), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a Capabilities tab on the Agent sidebar and a capability picker on the EdgeInspector.
 - **In-app parse step** replacing the external [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) workflow.
 - **Flow id rename with cascade update.** Ids are immutable in MVP; delete-and-recreate to change.
 

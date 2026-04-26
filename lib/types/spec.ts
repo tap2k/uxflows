@@ -1,4 +1,7 @@
-// Plain TS types mirroring SCHEMA.md (v0). TypeBox/Ajv validation will layer on later.
+// Plain TS types mirroring SCHEMA.md. v0 fields are required where the schema
+// marks them so; v1 additive fields (steps, capabilities, exit-path actions,
+// typed variable declarations) are optional and only populated in v1 specs.
+// TypeBox/Ajv validation will layer on later.
 
 export type Method = "llm" | "calculation" | "direct";
 export type VariableType = "string" | "number" | "boolean" | "enum";

@@ -133,55 +133,6 @@ const agent: Spec["agent"] = {
     },
   ],
 
-  capabilities: [
-    {
-      id: "cap_set_ptp_in_care",
-      name: "set_ptp_in_care",
-      description:
-        "Record a single-payment promise-to-pay in CARE for the committed date and amount.",
-      kind: "function",
-      inputs: ["customer_full_name", "loan_number", "ptp_date", "amount_plus_late_fee"],
-    },
-    {
-      id: "cap_set_payment_plan_in_care",
-      name: "set_payment_plan_in_care",
-      description:
-        "Record a multi-installment payment plan in CARE: first installment date and amount, plus remaining balance.",
-      kind: "function",
-      inputs: [
-        "customer_full_name",
-        "loan_number",
-        "partial_payment_amount",
-        "ptp_date",
-        "remaining_amount",
-      ],
-    },
-    {
-      id: "cap_send_ptp_confirmation",
-      name: "send_ptp_confirmation",
-      description:
-        "Send PTP confirmation SMS to the customer for a single-payment commitment.",
-      kind: "function",
-      inputs: ["customer_full_name", "ptp_date", "amount_plus_late_fee"],
-    },
-    {
-      id: "cap_send_plan_confirmation",
-      name: "send_plan_confirmation",
-      description:
-        "Send plan confirmation SMS to the customer for a multi-installment commitment.",
-      kind: "function",
-      inputs: ["customer_full_name", "partial_payment_amount", "ptp_date", "remaining_amount"],
-    },
-    {
-      id: "cap_log_human_handoff",
-      name: "log_human_handoff",
-      description:
-        "Log a handoff to the advocate line for follow-up; outcome is not recorded as a PTP.",
-      kind: "function",
-      inputs: ["customer_full_name", "loan_number", "human_handoff_line"],
-    },
-  ],
-
   knowledge: {
     faq: [
       {
@@ -405,10 +356,6 @@ Agent: Gracias por confirmar que realizarás el pago de 2200 pesos, que ya inclu
         type: "happy",
         condition: { id: "xp_bau_success_cond", expression: "Customer committed to full payment by dpd_plus_5_date.", method: "llm" },
         next_flow_id: null,
-        actions: [
-          { id: "act_bau_set_ptp", capability_id: "cap_set_ptp_in_care" },
-          { id: "act_bau_confirm_sms", capability_id: "cap_send_ptp_confirmation" },
-        ],
       },
       {
         id: "xp_bau_to_negotiation",
@@ -518,19 +465,12 @@ const flowNegotiation: Flow = {
         type: "happy",
         condition: { id: "xp_neg_accepted_cond", expression: "Customer accepted a valid plan (≥ 20% first installment, first payment ≤ dpd_plus_5_date, plan ≤ 30 days).", method: "llm" },
         next_flow_id: null,
-        actions: [
-          { id: "act_neg_set_plan", capability_id: "cap_set_payment_plan_in_care" },
-          { id: "act_neg_confirm_sms", capability_id: "cap_send_plan_confirmation" },
-        ],
       },
       {
         id: "xp_neg_escalate",
         type: "sad",
         condition: { id: "xp_neg_escalate_cond", expression: "Counter < 20%, first payment > dpd_plus_5_date, plan > 30 days, cannot pay anything, or repeatedly vague after two prompts.", method: "llm" },
         next_flow_id: null,
-        actions: [
-          { id: "act_neg_log_handoff", capability_id: "cap_log_human_handoff" },
-        ],
       },
     ],
   },
