@@ -124,6 +124,7 @@ Fields:
   - `condition` — reusable `ConditionEditor` (method + expression)
   - `next_flow_id` — reuses `FlowPicker`
   - `assigns` — simple key-value editor ("add variable assignment")
+  - `actions[]` — capability picker that adds `{id, capability_id}` rows. Picker is populated from `agent.capabilities[]`. Most relevant on terminal exits (`next_flow_id === null`); allowed on any exit.
 - `ConditionEditor` is the reusable unit — also used by `routing.entry_conditions`.
 
 **Files:** new `components/inspector/EdgeInspector.tsx`, `components/inspector/ConditionEditor.tsx`.
@@ -156,6 +157,7 @@ Persistent left drawer. Tabs:
   - Broken `next_flow_id` references
   - Duplicate flow ids
   - `entry_flow_id` resolves to an existing flow
+  - `exit_path.actions[].capability_id` resolves to an existing `agent.capabilities[]` entry
 - Surfaces inline: red ring on offending canvas nodes, hover tooltip with reason.
 
 **Files:** new `lib/validation/graphRules.ts`; [components/canvas/FlowNode.tsx](./components/canvas/FlowNode.tsx) reads validation status from store.
@@ -170,7 +172,7 @@ Persistent left drawer. Tabs:
 - **v1 typed variable declarations** — type, scope, description enrichment on variables. Variables are implicit in v0.
 - **Full `knowledge.tables` CRUD editor** (rows × structure). JSON-textarea fallback is MVP-sufficient.
 - **Deep graph validation** — variable-reference integrity, `interrupt.scope` members exist, `exit_path.assigns` target validity.
-- **v1 schema additions** — `tool` step, `call` step, `exit_path.actions[]` (post-exit capability dispatch), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a capability picker on the EdgeInspector and on tool steps. Capability catalog (`agent.capabilities[]`) is already in v0.
+- **v1 schema additions** — `tool` step (mid-conversation capability dispatch), `call` step (sub-flow invocation), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a capability picker on tool steps. Capability catalog (`agent.capabilities[]`) and post-exit dispatch (`exit_path.actions[]`) are already in v0.
 - **In-app parse step** replacing the external [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) workflow.
 - **Flow id rename with cascade update.** Ids are immutable in MVP; delete-and-recreate to change.
 

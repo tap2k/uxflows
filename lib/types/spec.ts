@@ -1,8 +1,8 @@
-// Plain TS types mirroring SCHEMA.md. v0 fields are required where the schema
-// marks them so; v1 additive fields (steps, exit-path actions, typed variable
-// declarations) are optional and only populated in v1 specs. The capability
-// catalog itself is v0 (informational); only the use sites that dispatch
-// capabilities are v1. TypeBox/Ajv validation will layer on later.
+// Plain TS types mirroring SCHEMA.md. v0 covers the agent envelope (incl.
+// capability catalog), flows with instructions/scripts/guardrails/knowledge,
+// and routing with exit_paths (incl. post-exit action references). v1
+// additive fields (steps, typed variable declarations) are optional and only
+// populated in v1 specs. TypeBox/Ajv validation will layer on later.
 
 export type Method = "llm" | "calculation" | "direct";
 export type VariableType = "string" | "number" | "boolean" | "enum";

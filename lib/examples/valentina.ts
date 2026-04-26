@@ -402,6 +402,10 @@ Agent: Gracias por confirmar que realizarás el pago de 2200 pesos, que ya inclu
         type: "happy",
         condition: { id: "xp_bau_success_cond", expression: "Customer committed to full payment by dpd_plus_5_date.", method: "llm" },
         next_flow_id: null,
+        actions: [
+          { id: "act_bau_set_ptp", capability_id: "cap_set_ptp_in_care" },
+          { id: "act_bau_confirm_sms", capability_id: "cap_send_ptp_confirmation" },
+        ],
       },
       {
         id: "xp_bau_to_negotiation",
@@ -511,12 +515,19 @@ const flowNegotiation: Flow = {
         type: "happy",
         condition: { id: "xp_neg_accepted_cond", expression: "Customer accepted a valid plan (≥ 20% first installment, first payment ≤ dpd_plus_5_date, plan ≤ 30 days).", method: "llm" },
         next_flow_id: null,
+        actions: [
+          { id: "act_neg_set_plan", capability_id: "cap_set_payment_plan_in_care" },
+          { id: "act_neg_confirm_sms", capability_id: "cap_send_plan_confirmation" },
+        ],
       },
       {
         id: "xp_neg_escalate",
         type: "sad",
         condition: { id: "xp_neg_escalate_cond", expression: "Counter < 20%, first payment > dpd_plus_5_date, plan > 30 days, cannot pay anything, or repeatedly vague after two prompts.", method: "llm" },
         next_flow_id: null,
+        actions: [
+          { id: "act_neg_log_handoff", capability_id: "cap_log_human_handoff" },
+        ],
       },
     ],
   },
