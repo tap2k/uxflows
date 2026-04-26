@@ -1,4 +1,4 @@
-// Plain TS types mirroring SCHEMA.md (v0). TypeBox/Ajv validation will layer on later.
+// TS types mirroring SCHEMA.md. v1 additive fields are optional. TypeBox/Ajv validation deferred.
 
 export type Method = "llm" | "calculation" | "direct";
 export type VariableType = "string" | "number" | "boolean" | "enum";
@@ -18,29 +18,15 @@ export interface Guardrail {
   statement: string;
 }
 
-export interface SuccessCriterion {
-  id: string;
-  criterion: string;
-}
-
 export interface FaqEntry {
-  id: string;
   question: string;
   answer: string;
   scripts?: Record<string, string>;
 }
 
 export interface GlossaryEntry {
-  id: string;
   term: string;
   definition: string;
-}
-
-export interface SourceEntry {
-  id: string;
-  name: string;
-  description: string;
-  type?: "rag" | "tool" | "api";
 }
 
 export interface TableField {
@@ -61,8 +47,18 @@ export interface TableEntry {
 export interface Knowledge {
   faq?: FaqEntry[];
   glossary?: GlossaryEntry[];
-  sources?: SourceEntry[];
   tables?: TableEntry[];
+}
+
+export type CapabilityKind = "retrieval" | "function";
+
+export interface Capability {
+  id: string;
+  name: string;
+  description: string;
+  kind: CapabilityKind;
+  inputs?: string[];
+  outputs?: string[];
 }
 
 export interface AgentMeta {
@@ -82,12 +78,12 @@ export interface Agent {
   chatbot_initiates?: boolean;
   variables?: Record<string, VariableDecl>;
   guardrails?: Guardrail[];
+  capabilities?: Capability[];
   knowledge?: Knowledge;
   entry_flow_id: string;
 }
 
 export interface Condition {
-  id: string;
   expression: string;
   method: Method;
 }
@@ -132,12 +128,21 @@ export interface AssignValue {
   value: unknown;
 }
 
+export interface ExitPathAction {
+  capability_id: string;
+}
+
 export interface ExitPath {
   id: string;
   type: ExitType;
   condition?: Condition;
   next_flow_id: string | null;
   assigns?: Record<string, AssignValue>;
+  actions?: ExitPathAction[];
+}
+
+export interface FlowKnowledge {
+  faq?: FaqEntry[];
 }
 
 export interface Routing {
@@ -162,10 +167,10 @@ export interface Flow {
   scripts?: Record<string, ScriptLine[]>;
   // v1: structured turn sequencing
   steps?: Step[];
-  success_criteria?: SuccessCriterion[];
   guardrails?: Guardrail[];
   max_turns?: number;
   example?: string;
+  knowledge?: FlowKnowledge;
   routing: Routing;
 }
 
