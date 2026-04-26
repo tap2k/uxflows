@@ -133,6 +133,55 @@ const agent: Spec["agent"] = {
     },
   ],
 
+  capabilities: [
+    {
+      id: "cap_set_ptp_in_care",
+      name: "set_ptp_in_care",
+      description:
+        "Record a single-payment promise-to-pay in CARE for the committed date and amount.",
+      kind: "function",
+      inputs: ["customer_full_name", "loan_number", "ptp_date", "amount_plus_late_fee"],
+    },
+    {
+      id: "cap_set_payment_plan_in_care",
+      name: "set_payment_plan_in_care",
+      description:
+        "Record a multi-installment payment plan in CARE: first installment date and amount, plus remaining balance.",
+      kind: "function",
+      inputs: [
+        "customer_full_name",
+        "loan_number",
+        "partial_payment_amount",
+        "ptp_date",
+        "remaining_amount",
+      ],
+    },
+    {
+      id: "cap_send_ptp_confirmation",
+      name: "send_ptp_confirmation",
+      description:
+        "Send PTP confirmation SMS to the customer for a single-payment commitment.",
+      kind: "function",
+      inputs: ["customer_full_name", "ptp_date", "amount_plus_late_fee"],
+    },
+    {
+      id: "cap_send_plan_confirmation",
+      name: "send_plan_confirmation",
+      description:
+        "Send plan confirmation SMS to the customer for a multi-installment commitment.",
+      kind: "function",
+      inputs: ["customer_full_name", "partial_payment_amount", "ptp_date", "remaining_amount"],
+    },
+    {
+      id: "cap_log_human_handoff",
+      name: "log_human_handoff",
+      description:
+        "Log a handoff to the advocate line for follow-up; outcome is not recorded as a PTP.",
+      kind: "function",
+      inputs: ["customer_full_name", "loan_number", "human_handoff_line"],
+    },
+  ],
+
   knowledge: {
     faq: [
       {

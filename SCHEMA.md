@@ -120,6 +120,17 @@ LLM conditions remain plain-language strings and are never emitted into generate
     { "id": "string", "statement": "string" }
   ],
 
+  "capabilities": [
+    {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "kind": "retrieval | function",
+      "inputs": ["variable_name"],
+      "outputs": ["variable_name"]
+    }
+  ],
+
   "knowledge": {
     "faq": [
       {
@@ -159,6 +170,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
 - **`system_prompt`** — the agent's behavioral instructions as authored. Present when flows are not yet defined or when the prompt carries behavioral intent not yet decomposed into flows. Flows compile into prompt fragments that extend or replace this.
 - **`chatbot_initiates`** — whether the agent sends the first message or waits for the user.
 - **`guardrails`** — cross-cutting behavioral invariants evaluated against the full transcript. Each is a stable `id` and a single `statement` sentence. Conditional rules written inline as natural language ("If X, always Y"). Executable conditional routing belongs in interrupt flows, not guardrails.
+- **`capabilities`** — declared catalog of external integrations the agent uses or can dispatch. Each entry has an `id` (editor-generated, spec-internal), a `name` (author-controlled, snake_case, the runtime dispatch identifier; stable across spec versions even when ids differ), a `description` (when/why this is used), a `kind` (`retrieval` = query-shaped, returns passages or records; `function` = typed-args call returning structured data or fire-and-forget side effect), `inputs` (canonical variable names it consumes), and optional `outputs` (canonical variable names it produces; omit for fire-and-forget). Endpoints, headers, and credentials live in the execution layer, not the spec. **In v0 the catalog is informational** — it documents the agent's operational surface so importers, exporters, and reviewers can see what external systems are involved. v1 adds dispatch use sites (`tool` steps for mid-conversation invocation; `exit_path.actions` for post-exit fire-and-forget) that reference catalog entries by `capability_id`.
 - **`knowledge.faq`** — high-confidence answers authored with the client. Optional per-language scripts capture the actual phrasing in each supported language.
 - **`knowledge.glossary`** — domain terms ensuring consistent terminology.
 - **`knowledge.tables`** — structured lookup data (promo plans, fee schedules, branch hours). Each has a `purpose`, a `structure`, sample `rows`, and an optional `scaling_rule`.
@@ -278,13 +290,12 @@ Optional enrichment (type, scope, description, example) defers to v1.
 
 - Structured steps and per-turn captures — added in v1.
 - Typed variable declarations with scope and enrichment — added in v1.
-- Declared catalog of external integrations (`agent.capabilities[]`) — added in v1.
 - `tool` step type (mid-conversation capability dispatch) — added in v1.
 - `call` step type (sub-flow invocation with input/output mapping) — added in v1.
 - Exit-path actions (post-exit capability dispatch) — added in v1.
 - `pipecat` hints field — added in v1.
 
-External integrations referenced informally during v0 authoring (e.g., "the agent logs the PTP in CARE on the happy exit") live as prose in `instructions` until v1 formalizes them.
+The capability catalog (`agent.capabilities[]`) is in v0 but informational only. Wiring exits or steps to dispatch a capability waits for v1.
 
 v0 schemas remain valid v1 schemas. v1 schemas with additional features cannot be downgraded to v0 without information loss.
 
@@ -292,7 +303,7 @@ v0 schemas remain valid v1 schemas. v1 schemas with additional features cannot b
 
 ## Schema v1 (Forward-Looking)
 
-v1 extends v0 with structured step sequencing, per-turn captures, typed variable declarations, an external-integration catalog, mid-turn and post-exit capability dispatch, and sub-flow invocation. All v1 additions are purely additive.
+v1 extends v0 with structured step sequencing, per-turn captures, typed variable declarations, mid-turn and post-exit capability dispatch (binding the v0 catalog to flow control), and sub-flow invocation. All v1 additions are purely additive.
 
 ### v1 Variable Declarations
 
@@ -313,33 +324,6 @@ v1 adds an optional `variables` dictionary to both the agent envelope and indivi
 
 - **`scope: plan_level`** — same for all users in a deployment (agent name, fee percentage, support number). Set once per deployment.
 - **`scope: per_persona`** — specific to the individual being contacted (customer name, account balance, due date). Provided per conversation by the runtime.
-
-### v1 Capabilities
-
-v1 adds an optional `capabilities` array to the agent envelope. A capability is a declared external integration the agent or its runtime can dispatch.
-
-```json
-{
-  "capabilities": [
-    {
-      "id": "string",
-      "name": "string",
-      "description": "string",
-      "kind": "retrieval | function",
-      "inputs": ["variable_name"],
-      "outputs": ["variable_name"]
-    }
-  ]
-}
-```
-
-- **`id` vs `name`** — `id` is editor-generated and spec-internal: it's what other parts of the spec reference (e.g., `exit_path.actions[].capability_id`) and what comments attach to. `name` is author-controlled, human-readable (snake_case), and is what the execution layer dispatches on. Different specs (versioned variants of the same agent) can share a `name` even when their editor-generated `id`s differ — the dispatch identifier stays stable across spec revisions. Same pattern as `knowledge.glossary`, `knowledge.tables`, etc., where `id` is the reference handle and `name`/`term` is the author-facing label.
-- **`name`** — stable runtime dispatch identifier (snake_case). The execution layer maps `name` to a concrete integration (MCP server, REST endpoint, native function, RAG pipeline). Endpoints, headers, and credentials never live in the spec.
-- **`kind: retrieval`** — query-shaped, returns passages or records (RAG, knowledge bases, FAQ retrieval).
-- **`kind: function`** — typed-args call returning structured data, or fire-and-forget side effect (CRM writes, SMS sends, generic tool calls). `outputs` omitted for fire-and-forget.
-- **`inputs` / `outputs`** — canonical variable names. Lazy variable semantics still apply.
-
-Capabilities are referenced from two use sites: v1 `tool` steps (mid-conversation, binds outputs into variable scope) and v1 exit-path actions (post-exit, fire-and-forget, outputs discarded).
 
 ### v1 Steps
 
@@ -395,7 +379,7 @@ Agent and user turns share the same structure. Role determines interpretation. A
 }
 ```
 
-References an `agent.capabilities[]` entry by id. The capability declares the dispatch `name`, `kind`, `inputs`, and `outputs`; the tool step inherits all of them. Outputs are bound into variable scope at this step. Protocol details (MCP vs REST vs native) live in the execution layer.
+References an `agent.capabilities[]` entry (v0 catalog) by id. The capability declares the dispatch `name`, `kind`, `inputs`, and `outputs`; the tool step inherits all of them. Outputs are bound into variable scope at this step. v1 tool steps require a `kind: retrieval` or `kind: function` capability (any kind is acceptable mid-conversation, but a `function` capability without `outputs` produces nothing useful for variable scope).
 
 #### Call Step
 
@@ -432,7 +416,7 @@ v1 adds an optional `actions` array to each `routing.exit_paths[]` entry. Action
 }
 ```
 
-Each entry references a `capability_id` from `agent.capabilities[]`. Outputs of the referenced capability (if any) are discarded — the conversational loop has resolved. Distinct from `tool` steps, which dispatch the same capabilities *during* the conversation and bind outputs into variable scope.
+Each entry references a `capability_id` from the v0 `agent.capabilities[]` catalog. Outputs of the referenced capability (if any) are discarded — the conversational loop has resolved. Distinct from `tool` steps, which dispatch the same capabilities *during* the conversation and bind outputs into variable scope.
 
 ### v1 Flow-Level Additions
 

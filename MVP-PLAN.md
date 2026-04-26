@@ -134,6 +134,7 @@ Persistent left drawer. Tabs:
 
 - **Meta** — `name`, `purpose`, `client`, `languages` (list), `user_segments`, `system_prompt`, `chatbot_initiates`
 - **Guardrails** — `ListEditor`
+- **Capabilities** — per-entry editor: `name` (snake_case), `description`, `kind` (radio: retrieval | function), `inputs[]`, `outputs[]` (optional). v0 catalog is informational; the picker on EdgeInspector / tool steps is v1.
 - **FAQ** — per-entry editor with optional `scripts.{lang}` per-language columns
 - **Glossary** — `ListEditor`-shaped
 - **Tables** — read-only view + JSON-textarea fallback for row edits; full CRUD defers post-MVP
@@ -169,7 +170,7 @@ Persistent left drawer. Tabs:
 - **v1 typed variable declarations** — type, scope, description enrichment on variables. Variables are implicit in v0.
 - **Full `knowledge.tables` CRUD editor** (rows × structure). JSON-textarea fallback is MVP-sufficient.
 - **Deep graph validation** — variable-reference integrity, `interrupt.scope` members exist, `exit_path.assigns` target validity.
-- **v1 schema additions** — `agent.capabilities[]` catalog, `tool` step, `call` step, `exit_path.actions[]` (post-exit dispatch), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a Capabilities tab on the Agent sidebar and a capability picker on the EdgeInspector.
+- **v1 schema additions** — `tool` step, `call` step, `exit_path.actions[]` (post-exit capability dispatch), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a capability picker on the EdgeInspector and on tool steps. Capability catalog (`agent.capabilities[]`) is already in v0.
 - **In-app parse step** replacing the external [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) workflow.
 - **Flow id rename with cascade update.** Ids are immutable in MVP; delete-and-recreate to change.
 
