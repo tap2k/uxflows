@@ -322,6 +322,30 @@ const flowHappyPathBau: Flow = {
   guardrails: [
     { id: "fgr_bau_bureau_context_at_close", statement: "Close states the bureau is aware and that paying will unlock higher future limits." },
   ],
+  knowledge: {
+    faq: [
+      {
+        id: "faq_bau_when_increase_available",
+        question: "¿Cuándo estará disponible mi aumento de límite?",
+        answer:
+          "Una vez liquides tu préstamo actual a tiempo, el aumento se activa en tu siguiente solicitud.",
+        scripts: {
+          "es-MX":
+            "Una vez liquides tu préstamo actual a tiempo, el aumento se activa en tu siguiente solicitud.",
+        },
+      },
+      {
+        id: "faq_bau_late_fee_amount",
+        question: "¿Cuánto es el cargo por pago tardío?",
+        answer:
+          "El cargo por demora equivale al 10% del monto total del préstamo y se aplica si no pagas antes del DPD3.",
+        scripts: {
+          "es-MX":
+            "El cargo por demora equivale al 10% del monto total del préstamo y se aplica si no pagas antes del DPD3.",
+        },
+      },
+    ],
+  },
   example: `Agent: Hola, Bethy. ¡Buenos días! ¿Cómo estás hoy?
 User: Bien, gracias.
 Agent: Te habla María de Tala. Antes de continuar, me gustaría recordarte que esta llamada está siendo grabada para fines de calidad en el servicio. ¿Me puedes confirmar si estoy hablando con Bethy Hardeman?
@@ -341,6 +365,20 @@ Agent: Gracias por confirmar que realizarás el pago de 2200 pesos, que ya inclu
         type: "happy",
         condition: { id: "xp_bau_success_cond", expression: "Customer committed to full payment by dpd_plus_5_date.", method: "llm" },
         next_flow_id: null,
+        actions: [
+          {
+            id: "act_bau_set_ptp",
+            name: "set_ptp_in_care",
+            description: "Record promise-to-pay in CARE for the committed date and amount.",
+            inputs: ["customer_full_name", "loan_number", "ptp_date", "amount_plus_late_fee"],
+          },
+          {
+            id: "act_bau_confirm_sms",
+            name: "send_confirmation_message",
+            description: "Send PTP confirmation SMS to the customer.",
+            inputs: ["customer_full_name", "ptp_date", "amount_plus_late_fee"],
+          },
+        ],
       },
       {
         id: "xp_bau_to_negotiation",
@@ -450,12 +488,34 @@ const flowNegotiation: Flow = {
         type: "happy",
         condition: { id: "xp_neg_accepted_cond", expression: "Customer accepted a valid plan (≥ 20% first installment, first payment ≤ dpd_plus_5_date, plan ≤ 30 days).", method: "llm" },
         next_flow_id: null,
+        actions: [
+          {
+            id: "act_neg_set_plan",
+            name: "set_payment_plan_in_care",
+            description: "Record the negotiated payment plan in CARE.",
+            inputs: ["customer_full_name", "loan_number", "partial_payment_amount", "ptp_date", "remaining_amount"],
+          },
+          {
+            id: "act_neg_confirm_sms",
+            name: "send_confirmation_message",
+            description: "Send plan confirmation SMS to the customer.",
+            inputs: ["customer_full_name", "partial_payment_amount", "ptp_date", "remaining_amount"],
+          },
+        ],
       },
       {
         id: "xp_neg_escalate",
         type: "sad",
         condition: { id: "xp_neg_escalate_cond", expression: "Counter < 20%, first payment > dpd_plus_5_date, plan > 30 days, cannot pay anything, or repeatedly vague after two prompts.", method: "llm" },
         next_flow_id: null,
+        actions: [
+          {
+            id: "act_neg_log_handoff",
+            name: "log_human_handoff",
+            description: "Log escalation to the advocate line for follow-up.",
+            inputs: ["customer_full_name", "loan_number", "human_handoff_line"],
+          },
+        ],
       },
     ],
   },

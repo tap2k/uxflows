@@ -101,6 +101,7 @@ Fields:
 - `guardrails[]` — list of `{id, statement}` via reusable `ListEditor`
 - `max_turns` — optional integer input
 - `example` — textarea (plain-text transcript, free-form)
+- `knowledge.faq[]` — flow-scoped FAQ entries; same editor as agent-level FAQ. Use for anticipated questions that travel with the flow when reused.
 - Button: "Open scripts sheet"
 
 **Files:** new `components/inspector/FlowInspector.tsx`, `components/inspector/ListEditor.tsx`, `components/inspector/FlowPicker.tsx`.
@@ -123,6 +124,7 @@ Fields:
   - `condition` — reusable `ConditionEditor` (method + expression)
   - `next_flow_id` — reuses `FlowPicker`
   - `assigns` — simple key-value editor ("add variable assignment")
+  - `actions[]` — list of `{id, name, description, inputs}` via reusable `ListEditor`. `inputs` is a comma-separated variable name list. Most relevant on terminal exits (`next_flow_id === null`); allowed on any exit.
 - `ConditionEditor` is the reusable unit — also used by `routing.entry_conditions`.
 
 **Files:** new `components/inspector/EdgeInspector.tsx`, `components/inspector/ConditionEditor.tsx`.

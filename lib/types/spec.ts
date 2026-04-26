@@ -127,12 +127,24 @@ export interface AssignValue {
   value: unknown;
 }
 
+export interface Action {
+  id: string;
+  name: string;
+  description?: string;
+  inputs?: string[];
+}
+
 export interface ExitPath {
   id: string;
   type: ExitType;
   condition?: Condition;
   next_flow_id: string | null;
   assigns?: Record<string, AssignValue>;
+  actions?: Action[];
+}
+
+export interface FlowKnowledge {
+  faq?: FaqEntry[];
 }
 
 export interface Routing {
@@ -160,6 +172,7 @@ export interface Flow {
   guardrails?: Guardrail[];
   max_turns?: number;
   example?: string;
+  knowledge?: FlowKnowledge;
   routing: Routing;
 }
 
