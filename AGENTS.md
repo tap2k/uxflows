@@ -87,6 +87,28 @@ From the product design doc. The ones that most affect editor decisions:
 - **Optional by default.** Valid schema with minimal fields. Depth added incrementally.
 - **Findings are evidence, not certifications.** Simulation results show what failed and why — do not present scores with implied precision the evaluator does not support.
 - **Decomposition is the substrate.** Monolithic prompts hit an instruction-following ceiling in regulated behavior spaces; modular flows are how agents stay reliable at scale.
+- **Decomposition is progressive.** Start coarse, split when there's a real seam. The principle above applies *at scale*; for small specs the right move is *less* decomposition. Node count is a result of behavioral seams, not a target.
+
+## Spec Authoring Granularity
+
+A spec at the right level of detail uses the coarsest level that still captures the seams that matter. Levels:
+
+- **Level 0** — `agent.system_prompt` only, no flows. Pre-decomposition; a prompt you haven't structured yet.
+- **Level 1** — One free-form flow, whole script in `instructions`, no `scripts`. Single coherent conversation, no branching observability needed.
+- **Level 2** — A few flows split where routing actually branches.
+- **Level 3** — One flow per agent turn; distinct guardrails or captures per turn.
+- **Level 4 (v1)** — One flow with ordered `steps` and per-turn `condition` / `captures`.
+
+A new flow boundary earns its keep when at least one is true:
+
+- **Distinct routing logic** — branches lead to different downstream flows.
+- **Observability** — simulation/evaluation needs to assert "did we reach this stage?"
+- **Reuse** — the segment is droppable into other agents.
+- **Different guardrails** apply than to the surrounding flow.
+- **`max_turns` scope** — retry budgets attach to flow boundaries.
+- **Distinct `type`** — happy / sad / off / utility / interrupt classification differs.
+
+If none of these apply, decomposing is busywork. The canvas makes nodes feel like the "correct" granularity; resist the reflex.
 
 ## MVP Scope
 
