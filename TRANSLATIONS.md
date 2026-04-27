@@ -6,6 +6,8 @@ For the schema these reference, see [SCHEMA.md](./SCHEMA.md).
 
 ## Export Targets
 
+Targets fall into two structural classes. Graph-native runtimes (Pipecat, LangGraph) translate UX4 flows directly to nodes and exit_paths to edges; the spec's structure is preserved at runtime. Instruction-and-tool runtimes (LiveKit, OpenAI Agents SDK) compose the entire spec into a single agent's instructions; flow boundaries become prose ordering and exit-path conditions become routing guidance. Both work; the choice affects how much of UX4's authored structure survives as enforced runtime structure versus prose hints. Author for behavioral seams; accept that not all targets enforce them equivalently.
+
 ### Pipecat
 
 Pipecat uses a node-graph architecture. Each UX4 flow maps to a Pipecat node. Exit paths become function routing. The translation is structural and mechanical.
@@ -107,7 +109,7 @@ Instruction-and-tool based like LiveKit. The translation is compositional. Agent
 
 ### Voiceflow
 
-Voiceflow is an import source, not an export target. Run `voiceflow jsonschema` to get the authoritative schema before building the importer. Guardrails, personas, and knowledge are absent from Voiceflow exports and must be authored in UX4 after import.
+Run `voiceflow jsonschema` to get the authoritative schema before building the importer. Guardrails, personas, and knowledge are absent from Voiceflow exports and must be authored in UX4 after import.
 
 | Voiceflow Concept | UX4 Equivalent |
 |---|---|
