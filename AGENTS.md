@@ -95,7 +95,7 @@ From AGENT-TESTING.md — the five-step loop uxflows supports end-to-end:
 1. **Ingest** — paste a system prompt and attach supporting docs (PDFs, spreadsheets, Word, Figma exports, plain text).
 2. **Parse** — a behavioral parser (LLM-assisted) converts inputs to a structured v0 spec. Today this is [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt), a Claude conversation prompt run outside the app. The designer pastes source material in and a structured-text spec comes out. In-app "Parse into spec" will replace this.
 3. **Review and configure** — user reviews the parsed spec, answers the parser's open questions.
-4. **Simulate** — run personas against the agent endpoint. Evaluator scores each conversation against guardrails and scenario-level success criteria. (in whatsupp2)
+4. **Simulate** — run personas against the agent endpoint. Evaluator scores each conversation against guardrails and per-scenario `should_happen` / `should_not_happen`. (in whatsupp2)
 5. **Share** — internal findings report + client-facing shareable document. (in whatsupp2)
 
 ## Related Docs in This Repo

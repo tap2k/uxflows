@@ -70,11 +70,7 @@ SPECIFICATION
 ## META
 
 One paragraph. Agent name, purpose, client, primary language,
-user population, primary outcomes. Label inferences [INFERRED].
-
-## USER_SEGMENTS
-
-Plain text description of the demographics and any other characteristics of the intended users.
+primary outcomes. Label inferences [INFERRED].
 
 ## VARIABLES
 
@@ -93,14 +89,6 @@ as one sentence — if it has a condition ("when X happens, do
 Y"), write it inline as natural language rather than splitting
 into fields. If a condition is executable routing (trigger →
 flow), model it as an interrupt flow, not a guardrail.
-
-## SUCCESS_CRITERIA
-
-What a successful interaction looks like. Extract from the
-source if present — "what good looks like" sections, policy
-docs, or implicit in business goals.
-
-For each criterion: identifier and plain-language description.
 
 ## FLOWS
 
@@ -126,8 +114,7 @@ STEPS: numbered list.
   Variations if present, noting equivalent_alternatives /
   conditional / unknown.
 
-FLOW_GUARDRAILS and FLOW_SUCCESS_CRITERIA if any apply only
-within this flow.
+FLOW_GUARDRAILS if any apply only within this flow.
 
 EXAMPLE: plain-text transcript illustrating intended behavior
 for this flow. Format each turn as `Agent: ...` or `User: ...`
@@ -155,9 +142,10 @@ language, scripts per language.
 ### GLOSSARY
 For each domain term: term, definition.
 
-### SOURCES
-External capabilities: name, description of what
-it provides and when the agent uses it.
+### CAPABILITIES
+External tools the agent uses (lookups, function calls). For
+each: name, what it does, when the agent uses it, what data it
+takes in, what it returns.
 
 ### TABLES
 Structured lookup data: name, purpose, fields,

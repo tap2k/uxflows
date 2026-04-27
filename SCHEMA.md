@@ -7,7 +7,7 @@ Canonical behavioral spec schema for conversational agents authored in UX4. The 
 ## Data Model
 
 **Agent envelope** — one per spec, outside the graph.
-- Meta: name, purpose, client, languages (list), audience
+- Meta: name, purpose, client, languages (list)
 - System prompt
 - Global guardrails
 - Knowledge: FAQ, glossary, sources, tables
