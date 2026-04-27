@@ -80,6 +80,7 @@ The editor becomes spec-agnostic at the end of this chunk. Biggest single unit; 
 - **Load example** button fetches `public/valentina.json`, validates, loads into store.
 - **Export** serializes store → JSON → file download.
 - **Import** reads file-picker or paste-textarea, validates, loads into store.
+- **Declarative text import** — second paste-textarea path: schema-shaped outline (YAML/markdown matching the schema) parses mechanically into the same store. One-way; no live mirror. Re-import replaces; confirm if there are unsaved changes.
 - **Autosave** on every store mutation (debounced) → localStorage.
 - On mount: load from localStorage if present; else empty state with "Load example" / "Import" buttons.
 - **TypeBox schema** in `lib/schema/v0.ts` mirroring [SCHEMA.md](./SCHEMA.md) — replaces the hand-written types currently in [lib/types/spec.ts](./lib/types/spec.ts). Single source of truth.
@@ -173,7 +174,8 @@ Persistent left drawer. Tabs:
 - **Full `knowledge.tables` CRUD editor** (rows × structure). JSON-textarea fallback is MVP-sufficient.
 - **Deep graph validation** — variable-reference integrity, `interrupt.scope` members exist, `exit_path.assigns` target validity.
 - **v1 schema additions** — `tool` step (mid-conversation capability dispatch), `call` step (sub-flow invocation), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a capability picker on tool steps. Capability catalog (`agent.capabilities[]`) and post-exit dispatch (`exit_path.actions[]`) are already in v0.
-- **In-app parse step** replacing the external [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) workflow.
+- **Imperative text import (in-app parse step)** — paste a script/process doc, LLM-assisted parse converts to spec. One-way; lands in the same store as JSON / declarative-text import. Distinct from [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt), which produces declarative text and feeds the declarative-import path; the two coexist.
+- **Export as declarative text** — on-demand stringification of the spec for skim and stakeholder share. Read-only output; not a live mirror.
 - **Flow id rename with cascade update.** Ids are immutable in MVP; delete-and-recreate to change.
 
 ---

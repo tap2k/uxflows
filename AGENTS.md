@@ -28,6 +28,15 @@ Author a behavioral spec on a **canvas** — a flow graph with nodes for flows a
 
 Narrative sharing with stakeholders is expected to happen *outside* the app for now — e.g., embedding a canvas link inside a Google Doc — rather than by building an in-app doc view. A built-in narrative/doc view is not MVP and may never ship.
 
+### Authoring surfaces
+
+The canvas is the canonical editing surface. Text views are entry and export only — never a live mirror of the spec. Re-importing replaces the current spec; we do not merge text edits back into a live graph. The round-trip fragility that forces tools like Stately into heavy AST machinery is avoided by keeping the canvas canonical.
+
+- **Canvas + inspectors + sheets** — the only place users edit graph structure. Round-trips with the JSON store.
+- **Declarative text import** — paste a schema-shaped outline (parser output, hand-authored YAML/markdown, JSON contents). Mechanical parse, no LLM. One-way: text → JSON → canvas. [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) (run externally) is one upstream — its declarative output feeds this surface.
+- **Imperative text import** — paste an analyst's script or process doc; LLM-assisted parse converts to spec. One-way: text → JSON → canvas. Gated on in-app parse tooling; no MVP equivalent.
+- **Export as declarative text** — on-demand, for skim and stakeholder share. One-way out.
+
 ## Tech Stack
 
 - **Next.js 16.2** (Pages Router), React 19, TypeScript
