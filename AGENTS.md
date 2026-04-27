@@ -34,7 +34,7 @@ The canvas is the canonical editing surface. Text views are entry and export onl
 
 - **Canvas + inspectors + sheets** — the only place users edit graph structure. Round-trips with the JSON store.
 - **Declarative text import** — paste a schema-shaped outline (parser output, hand-authored YAML/markdown, JSON contents). Mechanical parse, no LLM. One-way: text → JSON → canvas. [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) (run externally) is one upstream — its declarative output feeds this surface.
-- **Imperative text import** — paste an analyst's script or process doc; LLM-assisted parse converts to spec. One-way: text → JSON → canvas. Gated on in-app parse tooling; no MVP equivalent.
+- **Imperative text import** — paste source material that isn't already schema-shaped: an analyst's script, a process doc, a system prompt, or supporting docs. LLM-assisted parse extracts structure into a spec. One-way: text → JSON → canvas. 
 - **Export as declarative text** — on-demand, for skim and stakeholder share. One-way out.
 
 ## Tech Stack
