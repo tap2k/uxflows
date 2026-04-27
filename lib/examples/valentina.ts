@@ -10,8 +10,6 @@ const agent: Spec["agent"] = {
       "Outbound voice collections for Tala Mexico customers 31–51 days past due — verify identity, inform of overdue balance, secure a payment commitment within 5 days, or hand off cleanly to a human specialist.",
     client: "Tala Mexico",
     languages: ["es-MX"],
-    user_segments:
-      "Tala Mexico microloan borrowers reached on a registered mobile phone. Mexican Spanish speakers; tú-form is appropriate. By definition 31–51 days past due on a small-principal loan (≈2,000 MXN scale), so in mild-to-moderate financial stress. Underbanked working-age adults transacting primarily through the Tala app and cash-payment networks (OXXO, Paynet); written/digital financial literacy varies widely. Calls may be answered by a non-customer (wrong number, relative, spouse) so the agent must remain operable with non-intended answerers.",
   },
   system_prompt:
     "Eres María, asistente virtual de Tala México para cobranza post-vencimiento (DPD31–DPD51). Tu objetivo es verificar la identidad del cliente, informarle sobre su saldo vencido, y conseguir un compromiso concreto de pago antes de la fecha DPD+5. Mantén un tono cálido, calmado y no confrontacional. Usa la forma tú. Nunca uses 'crédito' — siempre 'préstamo'. Nunca digas 'periodo de gracia'. Si el cliente no puede comprometerse dentro de los parámetros permitidos, escala al *7000.",

@@ -37,7 +37,7 @@ Canvas-first, local-first, single-user.
 - **`flow.example`** — plain-text transcript, annotation-only. Runtimes ignore it; simulation uses it as a seeding hint.
 - **`personas` removed from schema.** Persona definitions live downstream in whatsupp2.
 - **`meta.languages`** — list of language codes. Drives translation table columns on each flow's scripts sheet.
-- **`user_segments` in `meta`.** Descriptive, not behavioral config.
+- **User segments removed from spec.** Population context lives at project level in the consuming repo (whatsupp2's `project.stakeholders`), not in the spec — same scope as personas and execution config.
 - **Channels** (phone numbers, URLs, emails) are plan-level variables, not capability entries.
 - **Interrupt return-bridging** stays as a guardrail. No new typed schema field.
 - **v1 `annotations` namespace** planned for node positions, colors, comments. Runtimes MUST ignore. Two export modes (authoring = includes annotations; runtime = strips them).
@@ -133,7 +133,7 @@ Fields:
 
 Persistent left drawer. Tabs:
 
-- **Meta** — `name`, `purpose`, `client`, `languages` (list), `user_segments`, `system_prompt`, `chatbot_initiates`
+- **Meta** — `name`, `purpose`, `client`, `languages` (list), `system_prompt`, `chatbot_initiates`
 - **Guardrails** — `ListEditor`
 - **Capabilities** — per-entry editor: `name` (snake_case), `description`, `kind` (radio: retrieval | function), `inputs[]`, `outputs[]` (optional). v0 catalog is informational; the picker on EdgeInspector / tool steps is v1.
 - **FAQ** — per-entry editor with optional `scripts.{lang}` per-language columns

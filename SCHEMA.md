@@ -110,8 +110,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
     "name": "string",
     "purpose": "string",
     "client": "string",
-    "languages": ["EN", "ES"],
-    "user_segments": "string (freeform description of who the agent talks to)"
+    "languages": ["EN", "ES"]
   },
 
   "system_prompt": "string",
@@ -166,7 +165,6 @@ LLM conditions remain plain-language strings and are never emitted into generate
 ### Field Notes
 
 - **`meta.languages`** — list of language codes supported by this agent. Drives the columns of the translation table on each flow.
-- **`meta.user_segments`** — freeform description of who the agent talks to. Behaviorally informative (tone, vocabulary, assumptions) and consumed downstream in `../whatsupp2/` as a seed for persona generation.
 - **`system_prompt`** — the agent's behavioral instructions as authored. Present when flows are not yet defined or when the prompt carries behavioral intent not yet decomposed into flows. Flows compile into prompt fragments that extend or replace this.
 - **`chatbot_initiates`** — whether the agent sends the first message or waits for the user.
 - **`guardrails`** — cross-cutting behavioral invariants evaluated against the full transcript. Each is a stable `id` and a single `statement` sentence. Conditional rules written inline as natural language ("If X, always Y"). Executable conditional routing belongs in interrupt flows, not guardrails.

@@ -66,7 +66,6 @@ export interface AgentMeta {
   purpose: string;
   client?: string;
   languages?: string[];
-  user_segments?: string;
 }
 
 export interface Agent {
