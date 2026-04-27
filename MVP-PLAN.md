@@ -33,7 +33,7 @@ Canvas-first, local-first, single-user.
 
 - **v0 flows use `instructions` + `scripts`**, not structured steps. `instructions` is behavioral prose that compiles into a system prompt fragment. `scripts` is a per-language list of utterances for this flow.
 - **Steps moved to v1.** Turn-level sequencing, per-turn captures, and utterance variations are v1 depth. MVP authoring via `instructions` + scripts sheet covers the dominant case.
-- **Variables are implicit, optionally enriched.** A variable exists because it is referenced; no upfront declaration required. v0 carries an optional `variables` dictionary at agent and flow level for `type` / `scope` / `description` / `example`. The schema ships with this in MVP so import/export preserve type info; the inspector UI for editing declarations defers post-MVP.
+- **Variables are implicit, optionally enriched.** A variable exists because it is referenced; no upfront declaration required. v0 carries an optional `variables` dictionary at agent and flow level for `type` / `description` — kept tight to match what whatsupp2 actually consumes. Scope is determined by runtime value-bucket location, not by a spec field; example values are generated at value-entry time. The schema ships with `variables` in MVP so import/export preserve type info; the inspector UI for editing declarations defers post-MVP.
 - **`flow.example`** — plain-text transcript, annotation-only. Runtimes ignore it; simulation uses it as a seeding hint.
 - **`personas` removed from schema.** Persona definitions live downstream in whatsupp2.
 - **`meta.languages`** — list of language codes. Drives translation table columns on each flow's scripts sheet.
@@ -169,7 +169,7 @@ Persistent left drawer. Tabs:
 - **Positions migration to `annotations.ui.position`.** Needed for round-trip through export; not blocking single-user editing.
 - **`annotations.comments[]` + async comment UI.** Asynchronous collab only.
 - **v1 steps editor** — structured turn sequencing, captures, per-turn conditions, utterance variations. `instructions` + scripts sheet is the MVP authoring surface.
-- **Variables inspector UI** — editor for the `variables` dict (type, scope, description, example). Schema is in v0; the inspector defers post-MVP. Imported variable types round-trip through export without inspector support.
+- **Variables inspector UI** — editor for the `variables` dict (type, description). Schema is in v0; the inspector defers post-MVP. Imported variable types round-trip through export without inspector support.
 - **Full `knowledge.tables` CRUD editor** (rows × structure). JSON-textarea fallback is MVP-sufficient.
 - **Deep graph validation** — variable-reference integrity, `interrupt.scope` members exist, `exit_path.assigns` target validity.
 - **v1 schema additions** — `tool` step (mid-conversation capability dispatch), `call` step (sub-flow invocation), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a capability picker on tool steps. Capability catalog (`agent.capabilities[]`) and post-exit dispatch (`exit_path.actions[]`) are already in v0.

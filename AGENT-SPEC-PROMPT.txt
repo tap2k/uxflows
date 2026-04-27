@@ -31,10 +31,7 @@ the same value) into a single canonical name. Record every
 consolidation. For any consolidation where the source variants
 might be distinct values, add a question for the designer.
 
-For each variable: name, scope (plan_level if the same for all
-users in a deployment; per_persona if specific to the
-individual being contacted), a plain-language description, and
-an example value.
+For each variable: name and a plain-language description.
 
 Do not classify types or tag methods. The converter handles
 that.
@@ -74,7 +71,7 @@ primary outcomes. Label inferences [INFERRED].
 
 ## VARIABLES
 
-For each variable: name, scope, description, example.
+For each variable: name, description.
 
 NORMALIZATION_FOOTNOTE: list every consolidation. Format:
 `canonical_name` ← source variants: [list]
