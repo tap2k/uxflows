@@ -57,7 +57,6 @@ LiveKit uses an instruction-and-tool architecture. The entire agent spec generat
 | variables | Tool parameters and return types |
 | knowledge.faq | Instructions FAQ section |
 | knowledge.tables | Reference data in instructions |
-| personas | Simulation only, not in output |
 
 ### LangGraph
 
@@ -81,29 +80,33 @@ LangGraph uses a graph-based execution model architecturally closest to UX4's fl
 | exit path (`calculation`) | Conditional edge with expression |
 | exit path (`llm`) | Conditional edge with LLM judgment |
 | guardrails | Node-level validation logic |
-| personas | Simulation only, not in output |
 
 Variable type declarations are especially important for LangGraph. Untyped variables default to string in the generated state schema.
 
 ### OpenAI Agents SDK
 
-Instruction-and-tool based like LiveKit. The translation is compositional. Agent-level guardrails map directly to OpenAI SDK guardrails — the most direct schema mapping across all export targets. The OpenAI Agents SDK has built-in tracing that provides a natural post-deployment observability layer.
-
 | UX4 Artifact | OpenAI Agents SDK Equivalent |
 |---|---|
 | agent meta | Agent name and instructions |
-| agent guardrails | SDK guardrails (direct mapping) |
-| flow descriptions | Instructions sections |
+| agent guardrails | SDK guardrails (direct mapping — the cleanest schema feature mapping across all targets) |
+| flow descriptions | Instructions sections (default) |
+| flow with substantially different guardrails or capability subset | Separate `Agent` reached via handoff |
 | turn (agent) | Instructions guidance |
 | turn (user) | Instructions expected behavior |
+| turn capture (`llm`) | LLM extraction in instructions |
+| turn capture (`calculation`) | `FunctionTool` returning typed value |
+| turn capture (`direct`) | Hardcoded value in instructions |
 | capability (`kind: function`) | `FunctionTool` definition (MCP or HTTP resolved at execution time) |
 | capability (`kind: retrieval`) | `FunctionTool` with retrieval logic |
 | tool step (references capability) | `FunctionTool` invocation |
-| exit-path action (references capability) | `FunctionTool` invoked at handoff/termination |
-| call step | Agent handoff to sub-agent |
-| variables | Tool parameters and context |
+| exit-path action (references capability) | `FunctionTool` invoked before terminating or handing off |
+| exit_path (`llm`) | Routing guidance in instructions |
+| exit_path (`calculation`) | `FunctionTool` returning routing decision |
+| exit_path with `type: "exit"`, `next_flow_id: null` | `Runner` returns final result |
+| interrupt flow with `scope: ["global"]` | Separate `Agent` reached via handoff (returns via `return_to_caller`) |
+| call step (v1) | Agent handoff to sub-agent; sub-agent terminal exit returns control |
+| variables | Tool parameters and shared context (v1 typed `variables` → typed context fields) |
 | knowledge.faq | Instructions FAQ section |
-| personas | Simulation only, not in output |
 
 ## Import Sources
 
