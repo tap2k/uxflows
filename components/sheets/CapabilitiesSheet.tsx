@@ -6,7 +6,7 @@ import { inputClass, StringListEditor } from "@/components/inspector/primitives"
 import { SheetShell } from "./SheetShell";
 
 export function CapabilitiesSheet({ onClose }: { onClose: () => void }) {
-  const capabilities = useSpecStore((s) => s.spec?.agent.capabilities ?? []);
+  const capabilities = useSpecStore((s) => s.spec?.agent.capabilities) ?? [];
   const updateAgent = useSpecStore((s) => s.updateAgent);
 
   return (

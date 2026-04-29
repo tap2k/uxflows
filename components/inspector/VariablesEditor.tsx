@@ -8,8 +8,9 @@ const inputClass =
 
 interface Row {
   name: string;
-  type: VariableType;
+  type: VariableType | "";
   description: string;
+  values: string;
 }
 
 interface VariablesEditorProps {
@@ -21,8 +22,9 @@ function rowsFrom(variables: Record<string, VariableDecl> | undefined): Row[] {
   if (!variables) return [];
   return Object.entries(variables).map(([name, decl]) => ({
     name,
-    type: decl.type,
+    type: decl.type ?? "",
     description: decl.description ?? "",
+    values: decl.values?.join(", ") ?? "",
   }));
 }
 
@@ -31,9 +33,14 @@ function rowsTo(rows: Row[]): Record<string, VariableDecl> | undefined {
   if (valid.length === 0) return undefined;
   const out: Record<string, VariableDecl> = {};
   for (const r of valid) {
-    out[r.name.trim()] = r.description.trim()
-      ? { type: r.type, description: r.description.trim() }
-      : { type: r.type };
+    const decl: VariableDecl = {};
+    if (r.type) decl.type = r.type;
+    if (r.description.trim()) decl.description = r.description.trim();
+    if (r.type === "enum") {
+      const parsed = r.values.split(",").map((s) => s.trim()).filter(Boolean);
+      if (parsed.length > 0) decl.values = parsed;
+    }
+    out[r.name.trim()] = decl;
   }
   return out;
 }
@@ -71,11 +78,12 @@ export function VariablesEditor({ variables, onChange }: VariablesEditorProps) {
               onChange={(e) =>
                 commit(
                   rows.map((r, j) =>
-                    j === i ? { ...r, type: e.target.value as VariableType } : r
+                    j === i ? { ...r, type: e.target.value as VariableType | "" } : r
                   )
                 )
               }
             >
+              <option value="">—</option>
               {VARIABLE_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -98,12 +106,22 @@ export function VariablesEditor({ variables, onChange }: VariablesEditorProps) {
             }
             placeholder="description (optional)"
           />
+          {row.type === "enum" && (
+            <input
+              className={inputClass}
+              value={row.values}
+              onChange={(e) =>
+                commit(rows.map((r, j) => (j === i ? { ...r, values: e.target.value } : r)))
+              }
+              placeholder="values: foo, bar, baz"
+            />
+          )}
         </div>
       ))}
       <button
         type="button"
         onClick={() =>
-          commit([...rows, { name: "", type: "string", description: "" }])
+          commit([...rows, { name: "", type: "string", description: "", values: "" }])
         }
         className="text-xs text-zinc-600 hover:text-zinc-900 underline"
       >

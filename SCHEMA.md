@@ -161,7 +161,8 @@ LLM conditions remain plain-language strings and are never emitted into generate
   "variables": {
     "variable_name": {
       "type": "string | number | boolean | enum",
-      "description": "string"
+      "description": "string",
+      "values": ["literal", "..."]
     }
   },
 
@@ -179,7 +180,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
 - **`knowledge.faq`** — high-confidence answers authored with the client. Optional per-language scripts capture the actual phrasing in each supported language.
 - **`knowledge.glossary`** — domain terms ensuring consistent terminology.
 - **`knowledge.tables`** — structured lookup data (promo plans, fee schedules, branch hours). Each has a `purpose`, a `structure`, sample `rows`, and an optional `scaling_rule`.
-- **`variables`** — optional dictionary of variable declarations that enrich already-existing variables with `type` and `description`. Declaration does not create a variable; only reference does. See [Variables](#variables) for why declarations are optional and what consumers do with them.
+- **`variables`** — optional dictionary of variable declarations that enrich already-existing variables with `type`, `description`, and (for `type: "enum"`) `values`. Declaration does not create a variable; only reference does. Every field is optional — declare what you know, leave the rest off. See [Variables](#variables) for why declarations are optional and what consumers do with them.
 - **`entry_flow_id`** — the flow the conversation enters first.
 
 ---
@@ -228,17 +229,16 @@ LLM conditions remain plain-language strings and are never emitted into generate
   "variables": {
     "variable_name": {
       "type": "string | number | boolean | enum",
-      "description": "string"
+      "description": "string",
+      "values": ["literal", "..."]
     }
   },
 
   "routing": {
-    "entry_conditions": [
-      {
-        "expression": "string",
-        "method": "llm | calculation | direct"
-      }
-    ],
+    "entry_condition": {
+      "expression": "string",
+      "method": "llm | calculation | direct"
+    },
     "exit_paths": [
       {
         "id": "string",
@@ -274,7 +274,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
 - **`example`** — optional plain-text transcript illustrating intended behavior. Annotation-only: runtimes ignore it. Simulation may use it as a seeding hint but does not assert against it.
 - **`knowledge.faq`** — flow-scoped FAQ entries. Same shape as agent-level `knowledge.faq`. Travels with the flow when reused across agents.
 - **`variables`** — optional flow-scoped variable declarations. Same shape as agent-level `variables`; use the flow level for variables produced or consumed only inside this flow, the agent level for variables shared across flows. Declarations enrich an already-existing variable with `type` and `description` — they do not create variables.
-- **`routing.entry_conditions`** — when this flow should be active. For interrupt flows: trigger phrases or intents. For sequential flows: rarely needed; entry follows the incoming edge.
+- **`routing.entry_condition`** — when this flow should be active. For interrupt flows: a trigger phrase or intent. For sequential flows: rarely needed; entry follows the incoming edge. Single condition by design — combine multiple checks inline using `and`/`or` in a calculation expression, or describe them together in an llm condition.
 - **`routing.exit_paths`** — how the flow ends. `return_to_caller` is the special exit for interrupt flows, resuming the interrupted flow. `assigns` produces variables available to the next flow.
 - **`routing.exit_paths[].actions`** — non-conversational side effects fired when this exit is taken (e.g., write a record to a CRM, send a confirmation SMS). Each entry references an `agent.capabilities[]` catalog entry by `capability_id`. Inputs are resolved implicitly: the runtime reads the capability's `inputs` list and pulls those variable names from conversation scope at the moment the exit fires — no explicit binding syntax. Any `outputs` declared on the referenced capability are not bound — exit-path actions have no output binding syntax. The runtime fires actions in declaration order; in v0 ordering is best-effort and idempotency is the runtime's responsibility. Distinct from v1 `tool` steps, which dispatch the same capabilities *during* the conversation and bind outputs into variable scope.
 
@@ -295,7 +295,8 @@ Both the agent envelope and individual flows accept an optional `variables` dict
   "variables": {
     "variable_name": {
       "type": "string | number | boolean | enum",
-      "description": "string"
+      "description": "string",
+      "values": ["literal", "..."]
     }
   }
 }
@@ -418,12 +419,25 @@ Invokes another flow inline and returns. Variables do not leak across flow bound
   "pipecat": {
     "context_strategy": "APPEND | RESET",
     "respond_immediately": true,
-    "pre_actions": []
+    "pre_actions": [],
+    "post_actions": []
   }
 }
 ```
 
-Pipecat-specific runtime hints. `context_strategy`, `respond_immediately`, and `pre_actions` (fires before the node's LLM completion — e.g., audible hold tone, context priming) have no behavioral-spec analogue and pass through verbatim to generated Pipecat node configuration.
+Pipecat-specific runtime hints. `context_strategy`, `respond_immediately`, `pre_actions` (fires before the node's LLM completion — e.g., audible hold tone, context priming), and `post_actions` (fires after the node completes, before transition) have no behavioral-spec analogue and pass through verbatim to generated Pipecat node configuration.
+
+---
+
+## Beyond v1 — Open Questions
+
+Forward-looking concepts surfaced by mapping the schema against runtimes. Not designed yet — recorded so they aren't invented twice.
+
+- **Accumulator / reducer semantics on variables.** UX4 variables hold values; some runtimes (notably LangGraph state with `add_messages` and custom reducers) let a variable accumulate across turns. There is no UX4 expression for "this variable is an append-list of all resolved concerns." If this becomes a real authoring need, the natural home is a field on the variable declaration (e.g., `variables[name].accumulator`) rather than a runtime hint — accumulation is behavior, not deployment detail.
+
+- **Human-in-the-loop / mid-flow external pause.** Distinct from `type: interrupt` flows, which model user-initiated topic switches. This is "halt the run awaiting external approval or review, then resume." LangGraph expresses it via `interrupt()`; production compliance workflows need it. If added, this is a first-class flow-level concept (a flow type or step type), not a hint — pausing for a human is a behavioral seam.
+
+- **Optional intent catalog.** The `llm` method on entry conditions, exit-path conditions, and v1 captures already does zero-shot intent classification — the natural-language `expression` is the intent description, evaluated by the LLM at runtime. Deliberately the only path in v0/v1: forces specs to commit to UX4's behavioral-description framing rather than the Dialogflow-style named-intent-catalog tradition. If real authoring pain emerges (phrasing drift across reuse sites, classification reliability for high-stakes routing, import fidelity from Voiceflow/Botpress utterance lists, observability needing stable intent names in traces), the natural shape is an optional `agent.intents[]` catalog (`{id, name, description, examples[]}`) referenceable from `llm` conditions via `intent_id`. Same opt-in/lazy-enrichment pattern as `variables`. Triggered by need, not anticipation — adding pre-emptively erodes the positioning that the inline-LLM-judgment model is enough.
 
 ---
 

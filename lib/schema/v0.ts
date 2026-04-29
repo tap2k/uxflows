@@ -38,8 +38,9 @@ const CapabilityKind = Type.Union([
 
 const VariableDeclSchema = Type.Object(
   {
-    type: VariableType,
+    type: Type.Optional(VariableType),
     description: Type.Optional(Type.String()),
+    values: Type.Optional(Type.Array(Type.String())),
   },
   strict
 );
@@ -158,7 +159,7 @@ const ExitPathSchema = Type.Object(
 
 const RoutingSchema = Type.Object(
   {
-    entry_conditions: Type.Optional(Type.Array(ConditionSchema)),
+    entry_condition: Type.Optional(ConditionSchema),
     exit_paths: Type.Array(ExitPathSchema),
   },
   strict
@@ -254,6 +255,7 @@ const PipecatHintsSchema = Type.Object(
     ),
     respond_immediately: Type.Optional(Type.Boolean()),
     pre_actions: Type.Optional(Type.Array(Type.Unknown())),
+    post_actions: Type.Optional(Type.Array(Type.Unknown())),
   },
   strict
 );

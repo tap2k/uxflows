@@ -56,7 +56,7 @@ export function EdgeInspector() {
     const f = s.spec.flows.find((f) => f.id === selection.flowId);
     return f?.routing.exit_paths.find((xp) => xp.id === selection.exitPathId) ?? null;
   });
-  const capabilities = useSpecStore((s) => s.spec?.agent.capabilities ?? []);
+  const capabilities = useSpecStore((s) => s.spec?.agent.capabilities) ?? [];
   const updateExitPath = useSpecStore((s) => s.updateExitPath);
   const removeExitPath = useSpecStore((s) => s.removeExitPath);
   const setSelection = useSpecStore((s) => s.setSelection);

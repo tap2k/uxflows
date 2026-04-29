@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useSpecStore } from "@/lib/store/spec";
-import type { Flow, FlowType, Guardrail, FaqEntry } from "@/lib/schema/v0";
+import type { Flow, FlowType, Guardrail, FaqEntry, Condition } from "@/lib/schema/v0";
 import { genId } from "@/lib/ids";
 import { ListEditor } from "./ListEditor";
 import { FlowPicker } from "./FlowPicker";
 import { VariablesEditor } from "./VariablesEditor";
+import { ConditionEditor } from "./ConditionEditor";
 import { ScriptsSheet } from "@/components/sheets/ScriptsSheet";
 
 const FLOW_TYPES: FlowType[] = ["happy", "sad", "off", "utility", "interrupt"];
@@ -109,6 +110,18 @@ export function FlowInspector() {
                 />
               )}
             </div>
+          </Field>
+        )}
+
+        {isInterrupt && (
+          <Field label="Entry condition">
+            <ConditionEditor
+              condition={flow.routing.entry_condition}
+              onChange={(c: Condition | undefined) =>
+                patch({ routing: { ...flow.routing, entry_condition: c } })
+              }
+              placeholder="Trigger phrase or intent that fires this interrupt"
+            />
           </Field>
         )}
 

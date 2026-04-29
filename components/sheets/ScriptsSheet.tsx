@@ -47,7 +47,7 @@ function rowsToScripts(rows: Row[], languages: string[]): Record<string, ScriptL
 }
 
 export function ScriptsSheet({ flow, onClose }: ScriptsSheetProps) {
-  const agentLanguages = useSpecStore((s) => s.spec?.agent.meta.languages ?? []);
+  const agentLanguages = useSpecStore((s) => s.spec?.agent.meta.languages) ?? [];
   const updateFlow = useSpecStore((s) => s.updateFlow);
   const updateAgent = useSpecStore((s) => s.updateAgent);
   const agent = useSpecStore((s) => s.spec?.agent);

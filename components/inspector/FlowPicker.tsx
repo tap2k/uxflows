@@ -7,7 +7,7 @@ interface FlowPickerProps {
 }
 
 export function FlowPicker({ selected, onChange, excludeId }: FlowPickerProps) {
-  const flows = useSpecStore((s) => s.spec?.flows ?? []);
+  const flows = useSpecStore((s) => s.spec?.flows) ?? [];
   const candidates = flows.filter((f) => f.id !== excludeId);
   const selectedSet = new Set(selected);
 
@@ -48,7 +48,7 @@ interface SingleFlowPickerProps {
 }
 
 export function SingleFlowPicker({ selected, onChange, excludeId, allowNull }: SingleFlowPickerProps) {
-  const flows = useSpecStore((s) => s.spec?.flows ?? []);
+  const flows = useSpecStore((s) => s.spec?.flows) ?? [];
   const candidates = flows.filter((f) => f.id !== excludeId);
 
   return (

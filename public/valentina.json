@@ -470,12 +470,10 @@
       },
       "example": "Agent: Hola, Bethy. ¡Buenos días! ¿Cómo estás hoy?\nUser: Bien, gracias.\nAgent: Te habla María de Tala. Antes de continuar, me gustaría recordarte que esta llamada está siendo grabada para fines de calidad en el servicio. ¿Me puedes confirmar si estoy hablando con Bethy Hardeman?\nUser: Sí, soy yo.\nAgent: Gracias por confirmarlo, Bethy. Te llamo para revisar tu saldo vencido de 2200 pesos en tu quinto préstamo, ya que tu fecha de pago fue el 30 de enero. ¿Me podrías compartir qué fue lo que dificultó tu pago?\nUser: Pues se me olvidó, la verdad. Puedo pagar mañana.\nAgent: Comprendo, Bethy. Para continuar, ¿podrías confirmar que realizarás el pago el día de hoy o mañana?\nUser: Sí, mañana sin falta.\nAgent: Gracias por confirmar que realizarás el pago de 2200 pesos, que ya incluye el aumento del 10% sobre pago tardío, el 6 de marzo. Al saldar tu préstamo, mejoras tu historial con Tala; además, reportaremos a la agencia de crédito que has liquidado el saldo. Que tengas un excelente día, Bethy.",
       "routing": {
-        "entry_conditions": [
-          {
-            "expression": "segment == \"bau\"",
-            "method": "calculation"
-          }
-        ],
+        "entry_condition": {
+          "expression": "segment == \"bau\"",
+          "method": "calculation"
+        },
         "exit_paths": [
           {
             "id": "xp_bau_success",
@@ -557,12 +555,10 @@
         ]
       },
       "routing": {
-        "entry_conditions": [
-          {
-            "expression": "segment == \"broken_promise\"",
-            "method": "calculation"
-          }
-        ],
+        "entry_condition": {
+          "expression": "segment == \"broken_promise\"",
+          "method": "calculation"
+        },
         "exit_paths": [
           {
             "id": "xp_bp_success",
@@ -804,12 +800,10 @@
         ]
       },
       "routing": {
-        "entry_conditions": [
-          {
-            "expression": "User asks who is calling or why, before identity is confirmed.",
-            "method": "llm"
-          }
-        ],
+        "entry_condition": {
+          "expression": "User asks who is calling or why, before identity is confirmed.",
+          "method": "llm"
+        },
         "exit_paths": [
           {
             "id": "xp_int_why_pre_return",
@@ -839,12 +833,10 @@
         ]
       },
       "routing": {
-        "entry_conditions": [
-          {
-            "expression": "User asks who is calling or why, after identity is confirmed.",
-            "method": "llm"
-          }
-        ],
+        "entry_condition": {
+          "expression": "User asks who is calling or why, after identity is confirmed.",
+          "method": "llm"
+        },
         "exit_paths": [
           {
             "id": "xp_int_why_post_return",
@@ -874,12 +866,10 @@
         ]
       },
       "routing": {
-        "entry_conditions": [
-          {
-            "expression": "User asks whether the agent is an AI, bot, or robot.",
-            "method": "llm"
-          }
-        ],
+        "entry_condition": {
+          "expression": "User asks whether the agent is an AI, bot, or robot.",
+          "method": "llm"
+        },
         "exit_paths": [
           {
             "id": "xp_int_ai_return",
@@ -909,12 +899,10 @@
         ]
       },
       "routing": {
-        "entry_conditions": [
-          {
-            "expression": "User asks directly whether the company will report them to the credit bureau.",
-            "method": "llm"
-          }
-        ],
+        "entry_condition": {
+          "expression": "User asks directly whether the company will report them to the credit bureau.",
+          "method": "llm"
+        },
         "exit_paths": [
           {
             "id": "xp_int_bureau_return",
@@ -936,12 +924,10 @@
       ],
       "instructions": "Restate the agreed installment schedule: first installment amount (first_installment_amount) on ptp_date, then installment_amount for the remaining (number_of_installments - 1) payments, with the final installment (final_installment_amount) due on final_due_date.",
       "routing": {
-        "entry_conditions": [
-          {
-            "expression": "User asks about the timing or amount of upcoming installments after a plan has been confirmed.",
-            "method": "llm"
-          }
-        ],
+        "entry_condition": {
+          "expression": "User asks about the timing or amount of upcoming installments after a plan has been confirmed.",
+          "method": "llm"
+        },
         "exit_paths": [
           {
             "id": "xp_int_next_inst_return",

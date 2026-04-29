@@ -6,7 +6,7 @@ import { inputClass } from "@/components/inspector/primitives";
 import { SheetShell } from "./SheetShell";
 
 export function GuardrailsSheet({ onClose }: { onClose: () => void }) {
-  const guardrails = useSpecStore((s) => s.spec?.agent.guardrails ?? []);
+  const guardrails = useSpecStore((s) => s.spec?.agent.guardrails) ?? [];
   const updateAgent = useSpecStore((s) => s.updateAgent);
 
   return (

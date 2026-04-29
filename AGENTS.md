@@ -33,9 +33,9 @@ Narrative sharing with stakeholders is expected to happen *outside* the app for 
 The canvas is the canonical editing surface. Text views are entry and export only — never a live mirror of the spec. Re-importing replaces the current spec; we do not merge text edits back into a live graph. The round-trip fragility that forces tools like Stately into heavy AST machinery is avoided by keeping the canvas canonical.
 
 - **Canvas + inspectors + sheets** — the only place users edit graph structure. Round-trips with the JSON store.
-- **Declarative text import** — paste a schema-shaped outline (parser output, hand-authored YAML/markdown, JSON contents). Mechanical parse, no LLM. One-way: text → JSON → canvas. [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) (run externally) is one upstream — its declarative output feeds this surface.
-- **Imperative text import** — paste source material that isn't already schema-shaped: an analyst's script, a process doc, a system prompt, or supporting docs. LLM-assisted parse extracts structure into a spec. One-way: text → JSON → canvas. 
-- **Export as declarative text** — on-demand, for skim and stakeholder share. One-way out.
+- **Declarative text import** — paste structured input (JSON or YAML matching the schema). Mechanical parse, no LLM. Used both by humans hand-authoring and as the entry point for upstream parsers' output. [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) produces v0 JSON the user pastes here.
+- **Imperative text import** — paste free-form source: an analyst's script, a process doc, a system prompt, supporting docs. An LLM converts it directly to v0 JSON in one shot, schema-constrained.
+- **Export as JSON** — current behavior. The exported file is the same shape the declarative import accepts; round-trip preserves the spec.
 
 ## Tech Stack
 
@@ -124,8 +124,8 @@ If none of these apply, decomposing is busywork. The canvas makes nodes feel lik
 From AGENT-TESTING.md — the five-step loop uxflows supports end-to-end:
 
 1. **Ingest** — paste a system prompt and attach supporting docs (PDFs, spreadsheets, Word, Figma exports, plain text).
-2. **Parse** — a behavioral parser (LLM-assisted) converts inputs to a structured v0 spec. Today this is [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt), a Claude conversation prompt run outside the app. The designer pastes source material in and a structured-text spec comes out. In-app "Parse into spec" will replace this.
-3. **Review and configure** — user reviews the parsed spec, answers the parser's open questions.
+2. **Parse** — a behavioral parser (LLM-assisted) converts inputs to a structured v0 spec. Today this is [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt). The designer pastes source material in, gets v0 JSON, and pastes it into the editor's Import. An in-app "Parse with AI" using a user-provided API key is planned to skip the round-trip.
+3. **Review and configure** — user reviews the parsed spec on the canvas, edits inline.
 4. **Simulate** — run personas against the agent endpoint. Evaluator scores each conversation against guardrails and per-scenario `should_happen` / `should_not_happen`. (in whatsupp2)
 5. **Share** — internal findings report + client-facing shareable document. (in whatsupp2)
 
@@ -134,7 +134,7 @@ From AGENT-TESTING.md — the five-step loop uxflows supports end-to-end:
 - [SCHEMA.md](./SCHEMA.md) — authoritative v0 + v1 spec schema
 - [MVP-PLAN.md](./MVP-PLAN.md) — ordered work plan to reach MVP, with design decisions and deferred items
 - [TRANSLATIONS.md](./TRANSLATIONS.md) — runtime translation tables (Pipecat, LiveKit, LangGraph, OpenAI Agents SDK; import: Voiceflow, Botpress)
-- [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) — Claude conversation prompt for converting source material into spec structured-text
+- [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) — LLM prompt for converting source material into v0 spec JSON (any frontier LLM)
 
 ## Running
 
