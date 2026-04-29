@@ -1,17 +1,24 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   ReactFlow,
   Background,
   Controls,
   MiniMap,
+  useNodesState,
+  useEdgesState,
   type Edge,
   type Node,
 } from "@xyflow/react";
-import type { Spec } from "@/lib/types/spec";
+import type { Spec } from "@/lib/schema/v0";
 import { FlowNode, type FlowNodeData } from "./FlowNode";
 import { autoLayout } from "./layout";
+import { loadPositions, savePositions, type Positions } from "./positions";
+import { useSpecStore } from "@/lib/store/spec";
+import { validateGraph, groupIssuesByFlow, groupIssuesByEdge } from "@/lib/validation/graphRules";
 
 const nodeTypes = { flow: FlowNode };
+
+const SAVE_DEBOUNCE_MS = 300;
 
 function truncate(s: string, n: number) {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
@@ -20,17 +27,21 @@ function truncate(s: string, n: number) {
 function buildGraph(spec: Spec): { nodes: Node[]; edges: Edge[] } {
   const flowIds = new Set(spec.flows.map((f) => f.id));
   const entryId = spec.agent.entry_flow_id;
+  const issues = validateGraph(spec);
+  const issuesByFlow = groupIssuesByFlow(issues);
+  const issuesByEdge = groupIssuesByEdge(issues);
 
   const nodes: Node[] = spec.flows.map((f) => ({
     id: f.id,
     type: "flow",
-    position: { x: 0, y: 0 }, // dagre will overwrite
+    position: { x: 0, y: 0 },
     data: {
       name: f.name,
       flowType: f.type,
       stepCount: f.steps?.length ?? 0,
       isEntry: f.id === entryId,
       scope: f.scope,
+      issues: issuesByFlow.get(f.id)?.map((i) => i.message),
     } satisfies FlowNodeData,
   }));
 
@@ -38,15 +49,19 @@ function buildGraph(spec: Spec): { nodes: Node[]; edges: Edge[] } {
   for (const f of spec.flows) {
     for (const xp of f.routing.exit_paths) {
       if (!xp.next_flow_id || !flowIds.has(xp.next_flow_id)) continue;
+      const edgeId = `${f.id}__${xp.id}`;
+      const edgeIssues = issuesByEdge.get(edgeId);
       const labelSrc = xp.condition?.expression ?? xp.type;
       edges.push({
-        id: `${f.id}__${xp.id}`,
+        id: edgeId,
         source: f.id,
         target: xp.next_flow_id,
         label: truncate(labelSrc, 48),
         labelStyle: { fontSize: 11, fill: "#52525b" },
         labelBgStyle: { fill: "#fafafa" },
-        style: { stroke: xp.type === "happy" ? "#34d399" : "#fbbf24", strokeWidth: 1.5 },
+        style: edgeIssues
+          ? { stroke: "#ef4444", strokeWidth: 1.5 }
+          : { stroke: xp.type === "happy" ? "#34d399" : "#fbbf24", strokeWidth: 1.5 },
       });
     }
   }
@@ -54,17 +69,87 @@ function buildGraph(spec: Spec): { nodes: Node[]; edges: Edge[] } {
   return { nodes, edges };
 }
 
-export function Canvas({ spec }: { spec: Spec }) {
-  const { nodes, edges } = useMemo(() => {
+function applySavedPositions(nodes: Node[], edges: Edge[], saved: Positions): Node[] {
+  const laidOut = autoLayout(nodes, edges);
+  return laidOut.map((n) =>
+    saved[n.id] ? { ...n, position: saved[n.id] } : n
+  );
+}
+
+export function Canvas() {
+  const spec = useSpecStore((s) => s.spec);
+  if (!spec) return <EmptyCanvas />;
+  return <CanvasInner spec={spec} />;
+}
+
+function EmptyCanvas() {
+  return (
+    <div className="w-full h-full">
+      <ReactFlow
+        nodes={[]}
+        edges={[]}
+        nodeTypes={nodeTypes}
+        proOptions={{ hideAttribution: true }}
+        minZoom={0.2}
+        maxZoom={2}
+      >
+        <Background gap={20} size={1} color="#e4e4e7" />
+      </ReactFlow>
+    </div>
+  );
+}
+
+function CanvasInner({ spec }: { spec: Spec }) {
+  const specId = spec.agent.id;
+
+  const initial = useMemo(() => {
     const g = buildGraph(spec);
-    return { nodes: autoLayout(g.nodes, g.edges), edges: g.edges };
-  }, [spec]);
+    const saved = loadPositions(specId);
+    return { nodes: applySavedPositions(g.nodes, g.edges, saved), edges: g.edges };
+  }, [spec, specId]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
+
+  useEffect(() => {
+    setNodes(initial.nodes);
+    setEdges(initial.edges);
+  }, [initial, setNodes, setEdges]);
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const positions: Positions = Object.fromEntries(
+        nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y }])
+      );
+      savePositions(specId, positions);
+    }, SAVE_DEBOUNCE_MS);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [nodes, specId]);
 
   return (
     <div className="w-full h-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={(_, n) => useSpecStore.getState().setSelection({ kind: "flow", id: n.id })}
+        onEdgeClick={(_, e) => {
+          const [flowId, exitPathId] = e.id.split("__");
+          if (flowId && exitPathId) {
+            useSpecStore.getState().setSelection({ kind: "edge", flowId, exitPathId });
+          }
+        }}
+        onPaneClick={() => useSpecStore.getState().setSelection(null)}
+        onConnect={(c) => {
+          if (c.source && c.target) {
+            useSpecStore.getState().addExitPath(c.source, c.target);
+          }
+        }}
         nodeTypes={nodeTypes}
         fitView
         minZoom={0.2}

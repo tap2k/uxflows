@@ -170,13 +170,12 @@ Persistent left drawer. Tabs:
 - **Positions migration to `annotations.ui.position`.** Needed for round-trip through export; not blocking single-user editing.
 - **`annotations.comments[]` + async comment UI.** Asynchronous collab only.
 - **v1 steps editor** — structured turn sequencing, captures, per-turn conditions, utterance variations. `instructions` + scripts sheet is the MVP authoring surface.
-- **Variables inspector UI** — editor for the `variables` dict (type, description). Schema is in v0; the inspector defers post-MVP. Imported variable types round-trip through export without inspector support.
-- **Full `knowledge.tables` CRUD editor** (rows × structure). JSON-textarea fallback is MVP-sufficient.
 - **Deep graph validation** — variable-reference integrity, `interrupt.scope` members exist, `exit_path.assigns` target validity.
 - **v1 schema additions** — `tool` step (mid-conversation capability dispatch), `call` step (sub-flow invocation), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a capability picker on tool steps. Capability catalog (`agent.capabilities[]`) and post-exit dispatch (`exit_path.actions[]`) are already in v0.
 - **Imperative text import (in-app parse step)** — paste a script/process doc, LLM-assisted parse converts to spec. One-way; lands in the same store as JSON / declarative-text import. Distinct from [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt), which produces declarative text and feeds the declarative-import path; the two coexist.
 - **Export as declarative text** — on-demand stringification of the spec for skim and stakeholder share. Read-only output; not a live mirror.
 - **Flow id rename with cascade update.** Ids are immutable in MVP; delete-and-recreate to change.
+- **Skip dagre re-layout when topology hasn't changed.** Today every spec mutation (including each keystroke in any inspector field) re-runs `buildGraph` + `dagre.layout` + `setNodes`/`setEdges` in [Canvas.tsx](./components/canvas/Canvas.tsx). Fine at Valentina scale; will lag at 100+ flows. Surgical fix: re-layout only when flow ids or edge connectivity changes; for pure data updates (name, instructions, condition text), update node `data` in place, keep positions. Preserves live-preview while killing the hot-path cost.
 
 ---
 

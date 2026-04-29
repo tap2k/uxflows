@@ -1,12 +1,13 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import type { FlowType } from "@/lib/types/spec";
+import type { FlowType } from "@/lib/schema/v0";
 
 export interface FlowNodeData {
   name: string;
   flowType: FlowType;
   stepCount: number;
   isEntry: boolean;
-  scope?: ["global"] | string[];
+  scope?: string[];
+  issues?: string[];
 }
 
 const typeStyles: Record<FlowType, { border: string; badge: string; label: string }> = {
@@ -17,7 +18,7 @@ const typeStyles: Record<FlowType, { border: string; badge: string; label: strin
   interrupt: { border: "border-violet-400",  badge: "bg-violet-100 text-violet-800",   label: "interrupt" },
 };
 
-export function FlowNode({ data }: NodeProps & { data: FlowNodeData }) {
+export function FlowNode({ data, selected }: NodeProps & { data: FlowNodeData }) {
   const style = typeStyles[data.flowType];
   const scopeLabel =
     data.flowType === "interrupt"
@@ -26,9 +27,21 @@ export function FlowNode({ data }: NodeProps & { data: FlowNodeData }) {
         : `scope: ${data.scope?.length ?? 0} flow${data.scope?.length === 1 ? "" : "s"}`
       : null;
 
+  const hasIssues = (data.issues?.length ?? 0) > 0;
+  const issueTitle = hasIssues ? data.issues!.join("\n") : undefined;
+
   return (
     <div
-      className={`rounded-md border-2 ${style.border} bg-white shadow-sm px-3 py-2 min-w-[200px] max-w-[260px] text-left`}
+      title={issueTitle}
+      className={`rounded-md border-2 ${
+        hasIssues ? "border-red-500" : style.border
+      } bg-white px-3 py-2 min-w-[200px] max-w-[260px] text-left ${
+        selected
+          ? "ring-2 ring-zinc-900 ring-offset-1 shadow-md"
+          : hasIssues
+          ? "ring-1 ring-red-300 shadow-sm"
+          : "shadow-sm"
+      }`}
     >
       <Handle type="target" position={Position.Left} className="!bg-zinc-400" />
       <div className="flex items-center justify-between gap-2 mb-1">
