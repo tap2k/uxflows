@@ -4,12 +4,12 @@ Operational plan for the uxflows MVP, derived from discussion on 2026-04-23 and 
 
 ## Goal
 
-Ship an editor that authors a full Valentina-scale spec from scratch and exports JSON that [../whatsupp2/](../whatsupp2/) consumes as simulation/evaluation input.
+Ship an editor that authors a full real-world MVP-scale spec from scratch and exports JSON that [../whatsupp2/](../whatsupp2/) consumes as simulation/evaluation input.
 
 Canvas-first, local-first, single-user.
 
 **Definition of done:**
-- Designer starts with nothing, clicks "Load example," sees Valentina on the canvas with draggable nodes.
+- Designer starts with nothing, clicks "Load example," sees the sample spec on the canvas with draggable nodes.
 - Can click any flow node and edit every field including the `example` transcript; changes persist across reload.
 - Can click any edge and edit the exit path (type, condition, next_flow_id, assigns); changes persist.
 - Can add a new flow from the toolbar, draw an edge to it, edit its content.
@@ -33,7 +33,7 @@ Canvas-first, local-first, single-user.
 
 - **v0 flows use `instructions` + `scripts`**, not structured steps. `instructions` is behavioral prose that compiles into a system prompt fragment. `scripts` is a per-language list of utterances for this flow.
 - **Steps moved to v1.** Turn-level sequencing, per-turn captures, and utterance variations are v1 depth. MVP authoring via `instructions` + scripts sheet covers the dominant case.
-- **Variables are implicit, optionally enriched.** A variable exists because it is referenced; no upfront declaration required. v0 carries an optional `variables` dictionary at agent and flow level for `type` / `description` — kept tight to match what whatsupp2 actually consumes. Scope is determined by runtime value-bucket location, not by a spec field; example values are generated at value-entry time. The schema ships with `variables` in MVP so import/export preserve type info; the inspector UI for editing declarations defers post-MVP.
+- **Variables are implicit, optionally enriched.** A variable exists because it is referenced; no upfront declaration required. v0 carries an optional `variables` dictionary at agent and flow level for `type` / `description` — kept tight to match what whatsupp2 actually consumes. Scope is determined by runtime value-bucket location, not by a spec field; example values are generated at value-entry time. The schema ships with `variables` in MVP so import/export preserve type info.
 - **`flow.example`** — plain-text transcript, annotation-only. Runtimes ignore it; simulation uses it as a seeding hint.
 - **`personas` removed from schema.** Persona definitions live downstream in whatsupp2.
 - **`meta.languages`** — list of language codes. Drives translation table columns on each flow's scripts sheet.
@@ -68,7 +68,7 @@ Ordered. Each leaves the editor strictly more complete than before.
 
 - Zustand store holding `spec`, `selection` (`{kind: "flow"|"edge", id: string} | null`), and mutators (`updateFlow`, `updateExitPath`, `addFlow`, `removeFlow`, etc.).
 - Store is the single source of truth; canvas and inspector subscribe.
-- [pages/index.tsx](./pages/index.tsx) no longer imports Valentina directly.
+- [pages/index.tsx](./pages/index.tsx) no longer imports the sample spec directly.
 
 **Files:** new `lib/store/spec.ts`, updated `pages/index.tsx`, `components/canvas/Canvas.tsx`.
 
@@ -76,8 +76,8 @@ Ordered. Each leaves the editor strictly more complete than before.
 
 The editor becomes spec-agnostic at the end of this chunk. Biggest single unit; highest leverage.
 
-- Convert [lib/examples/valentina.ts](./lib/examples/valentina.ts) → `public/valentina.json` (plain JSON, no TS import). Update Valentina to v0 schema shape (`instructions` + `scripts`, no steps).
-- **Load example** button fetches `public/valentina.json`, validates, loads into store.
+- Ship a v0-shaped sample spec at `public/example.json` (plain JSON, no TS import).
+- **Load example** button fetches `public/example.json`, validates, loads into store.
 - **Export** serializes store → JSON → file download.
 - **Import** reads file-picker or paste-textarea, validates, loads into store.
 - **Declarative text import** — second paste-textarea path: schema-shaped outline (YAML/markdown matching the schema) parses mechanically into the same store. One-way; no live mirror. Re-import replaces; confirm if there are unsaved changes.
@@ -86,7 +86,7 @@ The editor becomes spec-agnostic at the end of this chunk. Biggest single unit; 
 - **TypeBox schema** in `lib/schema/v0.ts` mirroring [SCHEMA.md](./SCHEMA.md) — replaces the hand-written types currently in [lib/types/spec.ts](./lib/types/spec.ts). Single source of truth.
 - **Ajv validation** on every import/load; errors listed in a panel; invalid spec is rejected (not partially loaded).
 
-**Files:** new `lib/schema/v0.ts`, `lib/validation/ajv.ts`, `components/toolbar/ImportExport.tsx`, new `public/valentina.json`. Retire `lib/examples/valentina.ts` and `lib/types/spec.ts`.
+**Files:** new `lib/schema/v0.ts`, `lib/validation/ajv.ts`, `components/toolbar/ImportExport.tsx`, new `public/example.json`.
 
 ### 4. Flow inspector
 
@@ -153,7 +153,7 @@ Persistent left drawer. Tabs:
 
 ### 9. Basic graph validation
 
-- Runs on store mutation (cheap at Valentina scale; no debounce needed for MVP).
+- Runs on store mutation (cheap at MVP scale; no debounce needed for MVP).
 - Checks shipped:
   - Broken `next_flow_id` references
   - Duplicate flow ids
@@ -175,7 +175,7 @@ Persistent left drawer. Tabs:
 - **Imperative text import (in-app parse step)** — paste a script/process doc, LLM converts directly to v0 JSON in one shot, schema-constrained. One-way; lands in the same store as the existing import path. Same prompt content as [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt); the in-app version skips the round-trip through an external LLM and uses a user-provided API key. The two coexist (external = no key needed, in-app = one click).
 - **Export as declarative text** — on-demand stringification of the spec for skim and stakeholder share. Read-only output; not a live mirror.
 - **Flow id rename with cascade update.** Ids are immutable in MVP; delete-and-recreate to change.
-- **Skip dagre re-layout when topology hasn't changed.** Today every spec mutation (including each keystroke in any inspector field) re-runs `buildGraph` + `dagre.layout` + `setNodes`/`setEdges` in [Canvas.tsx](./components/canvas/Canvas.tsx). Fine at Valentina scale; will lag at 100+ flows. Surgical fix: re-layout only when flow ids or edge connectivity changes; for pure data updates (name, instructions, condition text), update node `data` in place, keep positions. Preserves live-preview while killing the hot-path cost.
+- **Skip dagre re-layout when topology hasn't changed.** Today every spec mutation (including each keystroke in any inspector field) re-runs `buildGraph` + `dagre.layout` + `setNodes`/`setEdges` in [Canvas.tsx](./components/canvas/Canvas.tsx). Fine at MVP scale; will lag at 100+ flows. Surgical fix: re-layout only when flow ids or edge connectivity changes; for pure data updates (name, instructions, condition text), update node `data` in place, keep positions. Preserves live-preview while killing the hot-path cost.
 
 ---
 
