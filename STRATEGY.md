@@ -6,7 +6,7 @@
 
 - [`../whatsupp2/AGENT-TESTING.md`](../whatsupp2/AGENT-TESTING.md) — design doc for the simulation platform (shipped).
 - [MVP-PLAN.md](./MVP-PLAN.md) — uxflows editor MVP work plan (shipped).
-- [RUNNER-PLAN.md](./RUNNER-PLAN.md) — runner v0 operational plan.
+- [`../uxflows-runner/RUNNER-PLAN.md`](../uxflows-runner/RUNNER-PLAN.md) — runner v0 operational plan (lives in the sibling `uxflows-runner` repo).
 - [`../whatsupp2/AGENT-CLAUDE.md`](../whatsupp2/AGENT-CLAUDE.md) — whatsupp2 technical reference and pending list.
 - [SCHEMA.md](./SCHEMA.md) — the v0/v1 spec schema, the contract every component is a producer or consumer of.
 - [AGENTS.md](./AGENTS.md) — uxflows architecture and tech stack.
@@ -101,10 +101,9 @@ One AI-accelerated developer, three repos. Discipline is to serialize aggressive
 | Phase | Repo | Work | Cal time | Why now |
 |---|---|---|---|---|
 | **A** | `uxflows-runner` | RUNNER-PLAN Phases 0–3: hello-world bot → v0 dispatcher → editor wiring → polish | ~3 weeks | Largest leverage move. Defines the live canvas demo *and* unblocks two whatsupp2 features (capability eval, voice testing). |
-| **B** | `whatsupp2` | Voice-flavored text simulation — extend persona `interaction_style` with voice-natural patterns (disfluencies, repetition, ASR-error garble, backchannels, code-switching, terse replies, topic shifts) so bare-prompt mode probes a meaningful subset of voice failure modes. No annotations or runtime instrumentation; works against the agent as deployed. | ~1 week | Direct value for current Awaaz prompt-brittleness debugging. Independent of the runner. Silence, real barge-in timing, and DTMF wait for runner integration. |
-| **C** | `uxflows-runner` | v0.5: runtime guardrail enforcement + session event log persistence | ~1–2 weeks | The "auditable behavior" pitch needs guardrails to *do something* at runtime. Persisted event logs unlock replay nearly free. |
-| **D** | `whatsupp2` | Capability invocation evaluation (now unblocked by runner action events) | ~2 weeks | First whatsupp2 feature unlocked by the runner. Meaningful upgrade for the regulated buyer. |
-| **E** | `whatsupp2` | Voice agent testing (runner wrapped in simulation loop) | ~2–3 weeks | Closes the loop: text simulation today, voice simulation after this phase. The funnel becomes voice-native end-to-end. AGENT-TESTING.md flags this as the highest-priority post-MVP investment. |
+| **B** | `uxflows-runner` | v0.5: runtime guardrail enforcement + session event log persistence | ~1–2 weeks | The "auditable behavior" pitch needs guardrails to *do something* at runtime. Persisted event logs unlock replay nearly free. |
+| **C** | `whatsupp2` | Capability invocation evaluation (now unblocked by runner action events) | ~2 weeks | First whatsupp2 feature unlocked by the runner. Meaningful upgrade for the regulated buyer. |
+| **D** | `whatsupp2` | Voice agent testing (runner wrapped in simulation loop) | ~2–3 weeks | Closes the loop: text simulation today, voice simulation after this phase. The funnel becomes voice-native end-to-end. AGENT-TESTING.md flags this as the highest-priority post-MVP investment. |
 
 Total: ~3 months serial. Each phase leaves the funnel measurably better; no phase depends on one further than the immediately preceding.
 

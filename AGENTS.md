@@ -13,12 +13,19 @@ Visual editor for UX4 behavioral specs. A Next.js app that authors, simulates, a
 
 ## Product Context
 
-uxflows is the authoring surface of the broader UX4 product. The consuming application (simulation, evaluation) lives in the sibling repo at `../whatsupp2/`. Read these before making non-obvious architectural decisions:
+uxflows is the authoring surface of the broader UX4 product. Three sibling repos compose UX4:
+
+- `uxflows/` (this repo) — visual editor; authors specs.
+- [`../uxflows-runner/`](../uxflows-runner/) — Python runner; interprets specs, drives voice conversations, emits an event stream. See [`../uxflows-runner/RUNNER-PLAN.md`](../uxflows-runner/RUNNER-PLAN.md) for the operational plan.
+- `../whatsupp2/` — simulation/evaluation app; consumes specs and (eventually) the runner's event stream.
+
+Read these before making non-obvious architectural decisions:
 
 - [`../whatsupp2/AGENT-TESTING.md`](../whatsupp2/AGENT-TESTING.md) — product design doc (v0.9): vision, MVP scope, workflows, schema rationale, strategy, roadmap.
-- [`../whatsupp2/AGENT-CLAUDE.md`](../whatsupp2/AGENT-CLAUDE.md) — technical reference for the existing agent-testing implementation in whatsupp2. Useful for understanding how specs are consumed today.
+- [`../whatsupp2/AGENT-CLAUDE.md`](../whatsupp2/AGENT-CLAUDE.md) — technical reference for the existing agent-testing implementation in whatsupp2.
+- [`../uxflows-runner/RUNNER-PLAN.md`](../uxflows-runner/RUNNER-PLAN.md) — runner v0 plan and rationale (Pipecat-based, Google all-three for v0).
 
-The schema is the contract between uxflows and whatsupp2. Both repos defer to [SCHEMA.md](./SCHEMA.md) in this repo.
+The schema is the contract across all three repos. They all defer to [SCHEMA.md](./SCHEMA.md) in this repo.
 
 ## Mission
 
