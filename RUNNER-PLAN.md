@@ -42,9 +42,10 @@ The first demo target is **browser-microphone voice with live canvas highlightin
 
 For the full layer model and where each concept lives, see [STRATEGY.md](./STRATEGY.md). For the runner specifically:
 
-- It interprets the spec live, drives audio via Pipecat, and emits a single UX4-id-keyed event stream.
-- That stream has multiple subscribers in time order: the editor consumes it today (canvas highlighting); whatsupp2's simulator consumes it next (Phase E in STRATEGY.md); production observability could consume it eventually.
-- The runner has **dual identity by design** — prototyping component when invoked from the editor, simulation substrate when invoked by whatsupp2. One executor, two roles.
+- It interprets the spec live, drives **voice** (Pipecat pipeline) or **text** (WebSocket) I/O depending on `agent.meta.modes` at session start, and emits a single UX4-id-keyed event stream.
+- One dispatcher, two I/O adapters — voice and text share the cognitive layer. Mode is selected per session; the same spec can run either way without re-authoring.
+- That event stream has multiple subscribers in time order: the editor consumes it today (canvas highlighting); whatsupp2's simulator consumes it next (Phase E in STRATEGY.md); production observability could consume it eventually.
+- The runner has **dual identity by design** — prototyping component when invoked from the editor, simulation substrate when invoked by whatsupp2. One executor, two roles, two channels.
 
 Boundaries the runner respects:
 

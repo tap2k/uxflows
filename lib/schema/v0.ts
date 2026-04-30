@@ -112,12 +112,15 @@ const CapabilitySchema = Type.Object(
   strict
 );
 
+const Mode = Type.Union([Type.Literal("voice"), Type.Literal("text")]);
+
 const AgentMetaSchema = Type.Object(
   {
     name: Type.String(),
     purpose: Type.String(),
     client: Type.Optional(Type.String()),
     languages: Type.Optional(Type.Array(Type.String())),
+    modes: Type.Array(Mode, { minItems: 1 }),
   },
   strict
 );
@@ -313,6 +316,7 @@ export type VariableType = Static<typeof VariableType>;
 export type FlowType = Static<typeof FlowType>;
 export type ExitType = Static<typeof ExitType>;
 export type CapabilityKind = Static<typeof CapabilityKind>;
+export type Mode = Static<typeof Mode>;
 export type VariableDecl = Static<typeof VariableDeclSchema>;
 export type Guardrail = Static<typeof GuardrailSchema>;
 export type FaqEntry = Static<typeof FaqEntrySchema>;

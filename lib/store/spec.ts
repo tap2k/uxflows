@@ -33,7 +33,7 @@ function blankFlow(id: string): Flow {
 function blankAgent(entryFlowId: string): Agent {
   return {
     id: genId("agent"),
-    meta: { name: "Untitled", purpose: "", languages: ["EN"] },
+    meta: { name: "Untitled", purpose: "", languages: ["EN"], modes: ["voice"] },
     entry_flow_id: entryFlowId,
   };
 }

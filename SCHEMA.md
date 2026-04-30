@@ -110,7 +110,8 @@ LLM conditions remain plain-language strings and are never emitted into generate
     "name": "string",
     "purpose": "string",
     "client": "string",
-    "languages": ["EN", "ES"]
+    "languages": ["EN", "ES"],
+    "modes": ["voice", "text"]
   },
 
   "system_prompt": "string",
@@ -173,6 +174,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
 ### Field Notes
 
 - **`meta.languages`** — list of language codes supported by this agent. Drives the columns of the translation table on each flow.
+- **`meta.modes`** — channels the agent serves. `"voice"` = phone or browser-mic; `"text"` = chat (web, WhatsApp, SMS, etc.). Required, at least one. Drives the runner's I/O adapter at session start; same fact lets the simulator pick the right test harness. Mode-specific behavior (length, pacing, formatting) is authored in `instructions` rather than encoded as separate schema fields — the runtime LLM adapts based on channel context in the composed prompt.
 - **`system_prompt`** — the agent's behavioral instructions as authored. Present when flows are not yet defined or when the prompt carries behavioral intent not yet decomposed into flows. Flows compile into prompt fragments that extend or replace this.
 - **`chatbot_initiates`** — whether the agent sends the first message or waits for the user.
 - **`guardrails`** — cross-cutting behavioral invariants evaluated against the full transcript. Each is a stable `id` and a single `statement` sentence. Conditional rules written inline as natural language ("If X, always Y"). Executable conditional routing belongs in interrupt flows, not guardrails.

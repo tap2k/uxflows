@@ -21,7 +21,7 @@ The four components map across two repos:
 |---|---|---|
 | **Authoring** | `uxflows` | Visual editor on top of the v0 spec. Canvas, inspectors, sheets, validation. |
 | **Specification** | `uxflows/SCHEMA.md` | The v0/v1 schema — the contract every other component is a producer or consumer of. |
-| **Prototyping** | `uxflows-runner` (planned) | Native runner that interprets the spec live, drives audio via Pipecat, emits events for the canvas to highlight. |
+| **Prototyping** | `uxflows-runner` (planned) | Native runner that interprets the spec live, drives voice (via Pipecat) or text I/O depending on `meta.modes`, emits events for the canvas to highlight. |
 | **Simulation** | `whatsupp2` | Runs personas against the spec (via the runner, eventually). Owns scenario asserts, evaluator, findings reports. |
 
 The runner has a **dual identity** by design: it is both the prototyping component (designer hits Run, talks to the agent, watches the canvas pulse) and the simulation substrate (whatsupp2 wraps it with personas to run scenarios at scale). One executor, two roles. This is why we want a runner instead of two parallel things.
