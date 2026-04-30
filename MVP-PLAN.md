@@ -109,7 +109,6 @@ The editor becomes spec-agnostic at the end of this chunk. Biggest single unit; 
 **Files:** new `lib/schema/v0.ts`, `lib/validation/ajv.ts`, `components/toolbar/ImportExport.tsx`, new `public/example.json`.
 
 **Drift:**
-- The sample spec is at `public/valentina.json` (not yet renamed to `public/example.json`).
 - "Load example" button removed from the toolbar per design preference — the empty state is just a blank canvas with the toolbar visible. Designer imports a spec or clicks New flow to start.
 - Import accepts both JSON and YAML in one modal (drop-zone + paste textarea); the "declarative text" pathway is folded into the same Import modal rather than being a second path.
 
