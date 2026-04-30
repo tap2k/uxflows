@@ -2,6 +2,24 @@
 
 Operational plan for the uxflows MVP, derived from discussion on 2026-04-23 and 2026-04-26. High-level principles live in [AGENTS.md](./AGENTS.md); schema contract in [SCHEMA.md](./SCHEMA.md).
 
+## Status (2026-04-29)
+
+All nine chunks shipped. Editor is functionally complete for v0:
+
+- ✅ 1. Drag nodes + persist positions
+- ✅ 2. Spec state management
+- ✅ 3. Import / export + autosave + Ajv + TypeBox
+- ✅ 4. Flow inspector
+- ✅ 5. Scripts sheet (reorder deferred)
+- ✅ 6. Edge inspector
+- ✅ 7. Agent surfaces (split into toolbar modals, not a single sidebar — see drift note in chunk 7)
+- ✅ 8. Add / delete flows + drag-to-connect
+- ✅ 9. Basic graph validation
+
+Beyond plan, also shipped: Variables editor (was post-MVP), Tables CRUD (was post-MVP), `entry_flow_id` picker in Agent sheet, delete buttons in inspectors, schema-doc sync, AGENT-SPEC-PROMPT.txt rewritten for one-shot v0 JSON output.
+
+Real remaining gap: imperative LLM parse in-app (Settings sheet + provider dispatch + Parse modal). External LLM path already works — paste source through any frontier LLM with [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt), paste resulting JSON into Import.
+
 ## Goal
 
 Ship an editor that authors a full real-world MVP-scale spec from scratch and exports JSON that [../whatsupp2/](../whatsupp2/) consumes as simulation/evaluation input.
@@ -55,7 +73,7 @@ Canvas-first, local-first, single-user.
 
 Ordered. Each leaves the editor strictly more complete than before.
 
-### 1. Drag nodes + persist positions
+### 1. Drag nodes + persist positions ✅
 
 - Swap current `useMemo` for `useNodesState` in [components/canvas/Canvas.tsx](./components/canvas/Canvas.tsx).
 - `onNodesChange` → debounced localStorage write, keyed by `(specId, flowId)`.
@@ -64,7 +82,9 @@ Ordered. Each leaves the editor strictly more complete than before.
 
 **Files:** `components/canvas/Canvas.tsx`, new `components/canvas/positions.ts`.
 
-### 2. Spec state management
+**Drift:** localStorage key is `uxflows:positions:${specId}` — keyed by spec id, not `(specId, flowId)`. The value is a `Record<flowId, {x,y}>` so it functions equivalently.
+
+### 2. Spec state management ✅
 
 - Zustand store holding `spec`, `selection` (`{kind: "flow"|"edge", id: string} | null`), and mutators (`updateFlow`, `updateExitPath`, `addFlow`, `removeFlow`, etc.).
 - Store is the single source of truth; canvas and inspector subscribe.
@@ -72,7 +92,7 @@ Ordered. Each leaves the editor strictly more complete than before.
 
 **Files:** new `lib/store/spec.ts`, updated `pages/index.tsx`, `components/canvas/Canvas.tsx`.
 
-### 3. Import / export + autosave + Ajv + TypeBox
+### 3. Import / export + autosave + Ajv + TypeBox ✅
 
 The editor becomes spec-agnostic at the end of this chunk. Biggest single unit; highest leverage.
 
@@ -88,7 +108,12 @@ The editor becomes spec-agnostic at the end of this chunk. Biggest single unit; 
 
 **Files:** new `lib/schema/v0.ts`, `lib/validation/ajv.ts`, `components/toolbar/ImportExport.tsx`, new `public/example.json`.
 
-### 4. Flow inspector
+**Drift:**
+- The sample spec is at `public/valentina.json` (not yet renamed to `public/example.json`).
+- "Load example" button removed from the toolbar per design preference — the empty state is just a blank canvas with the toolbar visible. Designer imports a spec or clicks New flow to start.
+- Import accepts both JSON and YAML in one modal (drop-zone + paste textarea); the "declarative text" pathway is folded into the same Import modal rather than being a second path.
+
+### 4. Flow inspector ✅
 
 Right-side drawer. Opens when a flow node is selected.
 
@@ -107,7 +132,12 @@ Fields:
 
 **Files:** new `components/inspector/FlowInspector.tsx`, `components/inspector/ListEditor.tsx`, `components/inspector/FlowPicker.tsx`.
 
-### 5. Scripts sheet
+**Drift / additions:**
+- Variables editor for flow-scoped variables also shipped here (was post-MVP).
+- Entry condition editor exposed for interrupt flows.
+- Delete-flow button at the bottom.
+
+### 5. Scripts sheet ✅
 
 - Opens from FlowInspector → modal or expanded panel.
 - Rows = script utterances (ordered list from `flow.scripts[lang]`); columns = languages from `agent.meta.languages`.
@@ -117,7 +147,9 @@ Fields:
 
 **Files:** new `components/sheets/ScriptsSheet.tsx`.
 
-### 6. Edge inspector
+**Drift:** row reorder (up/down arrows) not shipped — add/delete/edit only. Reorder is a watchlist UX item.
+
+### 6. Edge inspector ✅
 
 - Same drawer shell as FlowInspector; switches content when selection is an edge.
 - Fields:
@@ -130,20 +162,19 @@ Fields:
 
 **Files:** new `components/inspector/EdgeInspector.tsx`, `components/inspector/ConditionEditor.tsx`.
 
-### 7. Agent sidebar
+### 7. Agent surfaces ✅
 
-Persistent left drawer. Tabs:
+Originally specced as a persistent left sidebar with tabs. Implementation split into separate toolbar buttons opening dedicated modals (Agent / Variables / Guardrails / Capabilities / Knowledge), reusing the existing `SheetShell` modal pattern. Functionally equivalent — every collection has an editor — and the modal-per-concern UX matched the rest of the editor better than a sibling sidebar would have.
 
-- **Meta** — `name`, `purpose`, `client`, `languages` (list), `system_prompt`, `chatbot_initiates`
-- **Guardrails** — `ListEditor`
-- **Capabilities** — per-entry editor: `name` (snake_case), `description`, `kind` (radio: retrieval | function), `inputs[]`, `outputs[]` (optional). v0 catalog is informational; the picker on EdgeInspector / tool steps is v1.
-- **FAQ** — per-entry editor with optional `scripts.{lang}` per-language columns
-- **Glossary** — `ListEditor`-shaped
-- **Tables** — read-only view + JSON-textarea fallback for row edits; full CRUD defers post-MVP
+- **Agent** modal — `name`, `purpose`, `client`, `languages` (comma-separated), `entry_flow_id` (flow picker), `system_prompt`, `chatbot_initiates`. Agent id displayed inline.
+- **Variables** modal — agent-level variable declarations (`type?`, `description?`, `values?` for enums).
+- **Guardrails** modal — `ListEditor` of `{id, statement}`.
+- **Capabilities** modal — per-entry editor: `name` (snake_case), `description`, `kind` (function/retrieval), `inputs[]`, `outputs[]`.
+- **Knowledge** modal — sections for FAQ, Glossary, and Tables. Tables CRUD shipped (was post-MVP): add/remove tables, edit name/purpose/structure/scaling_rule; rows still edit-as-JSON-textarea per the schema's `Record<string, unknown>[]` shape.
 
-**Files:** new `components/sidebar/AgentSidebar.tsx` + one tab component per section.
+**Files:** `components/sheets/{AgentSheet,VariablesSheet,GuardrailsSheet,CapabilitiesSheet,KnowledgeSheet,SheetShell}.tsx`, `components/inspector/primitives.tsx` (shared `Field`/`Section`/`StringListEditor`).
 
-### 8. Add / delete flows + drag-to-connect
+### 8. Add / delete flows + drag-to-connect ✅
 
 - Toolbar **New flow** → creates empty flow with generated id, places at viewport center, focuses inspector.
 - Delete key on selected flow or edge → removes from store.
@@ -151,7 +182,12 @@ Persistent left drawer. Tabs:
 
 **Files:** `components/canvas/Canvas.tsx` (onConnect handler), `components/toolbar/FlowActions.tsx`.
 
-### 9. Basic graph validation
+**Drift:**
+- New flow + Agent sheet buttons live in `components/toolbar/ImportExport.tsx` rather than a separate `FlowActions.tsx`. Worth renaming the file to `Toolbar.tsx` in cleanup.
+- New flow places at dagre-laid-out position (cheap), not viewport-center; user drags as needed.
+- Delete buttons also surface in FlowInspector and EdgeInspector with confirm prompts.
+
+### 9. Basic graph validation ✅
 
 - Runs on store mutation (cheap at MVP scale; no debounce needed for MVP).
 - Checks shipped:
@@ -159,9 +195,9 @@ Persistent left drawer. Tabs:
   - Duplicate flow ids
   - `entry_flow_id` resolves to an existing flow
   - `exit_path.actions[].capability_id` resolves to an existing `agent.capabilities[]` entry
-- Surfaces inline: red ring on offending canvas nodes, hover tooltip with reason.
+- Surfaces inline: red ring on offending canvas nodes, hover tooltip with reason. Edges with broken capability refs render in red.
 
-**Files:** new `lib/validation/graphRules.ts`; [components/canvas/FlowNode.tsx](./components/canvas/FlowNode.tsx) reads validation status from store.
+**Files:** new `lib/validation/graphRules.ts`; [components/canvas/FlowNode.tsx](./components/canvas/FlowNode.tsx) reads validation status from data.
 
 ---
 
@@ -173,6 +209,7 @@ Persistent left drawer. Tabs:
 - **Deep graph validation** — variable-reference integrity, `interrupt.scope` members exist, `exit_path.assigns` target validity.
 - **v1 schema additions** — `tool` step (mid-conversation capability dispatch), `call` step (sub-flow invocation), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a capability picker on tool steps. Capability catalog (`agent.capabilities[]`) and post-exit dispatch (`exit_path.actions[]`) are already in v0.
 - **Imperative text import (in-app parse step)** — paste a script/process doc, LLM converts directly to v0 JSON in one shot, schema-constrained. One-way; lands in the same store as the existing import path. Same prompt content as [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt); the in-app version skips the round-trip through an external LLM and uses a user-provided API key. The two coexist (external = no key needed, in-app = one click).
+- **Generate example transcript button.** The parse prompt only extracts example transcripts verbatim when present in the source; it does not invent them. Add a "Generate example" button in [FlowInspector](./components/inspector/FlowInspector.tsx) (next to "Open scripts sheet") that calls the LLM provider with the current flow's `instructions` / `scripts` / `routing` and populates `flow.example`. Reuses the same LLM plumbing as imperative import; lands after that ships.
 - **Export as declarative text** — on-demand stringification of the spec for skim and stakeholder share. Read-only output; not a live mirror.
 - **Flow id rename with cascade update.** Ids are immutable in MVP; delete-and-recreate to change.
 - **Skip dagre re-layout when topology hasn't changed.** Today every spec mutation (including each keystroke in any inspector field) re-runs `buildGraph` + `dagre.layout` + `setNodes`/`setEdges` in [Canvas.tsx](./components/canvas/Canvas.tsx). Fine at MVP scale; will lag at 100+ flows. Surgical fix: re-layout only when flow ids or edge connectivity changes; for pure data updates (name, instructions, condition text), update node `data` in place, keep positions. Preserves live-preview while killing the hot-path cost.

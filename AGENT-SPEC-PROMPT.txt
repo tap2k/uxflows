@@ -147,7 +147,9 @@ canonical name. Do not keep duplicate variants.
 
 Languages: use the codes the source uses ("EN", "es-MX", "hi-IN").
 Don't invent codes. If only one language is implied and not labeled,
-use a single code that fits the locale.
+use the ISO 639 two-letter code ("Hindi" → "hi", "Spanish" → "es").
+Use BCP-47 only if the source specifies a region ("Mexican Spanish"
+→ "es-MX").
 
 Methods (used in conditions, assigns, captures):
 - "llm" — semantic understanding by the model. Plain-language
@@ -158,6 +160,27 @@ Methods (used in conditions, assigns, captures):
   `verified == True`, `loan_amount > 50000 and days_overdue >= 30`.
 - "direct" — a literal value with no computation.
 
+Condition expressions:
+- Keep them short and unambiguous. The runtime LLM evaluates them
+  against the full conversation context — verbose phrasings don't
+  improve accuracy. Aim for 6–10 words.
+- For `method: "llm"`, don't embed {variable} placeholders. The
+  runtime treats the expression as plain text and will not
+  substitute. Refer to variables by name in prose ("customer is
+  verified", not "customer says they are {customer_name}").
+- For `method: "calculation"`, variables appear bare in expressions
+  (`verified == True`, `loan_amount > 50000`).
+
+exit_path.type semantics:
+- "happy" — successful continuation along the intended path.
+- "sad" — failure path (verification failed, retry exhausted, error).
+- "off" — off-topic or off-script (customer asks unrelated question,
+  pivots to a different request, refuses to proceed). Use this for
+  legitimate-but-not-on-script transitions; "sad" is for failures.
+- "exit" — conversation ends here; `next_flow_id` must be null.
+- "return_to_caller" — interrupt only; resumes the interrupted flow.
+  `next_flow_id` must be null.
+
 ---
 
 FLOWS, NOT STEPS
@@ -167,6 +190,22 @@ v0 uses `instructions` (behavioral prose) plus per-language `scripts`
 descriptions from the source into these two fields. Don't emit a
 `steps` array — that's a v1 feature.
 
+SCRIPTS
+
+Scripts are utterances the agent literally says, in the language
+indicated by the key. Don't invent utterances in a language not
+present in the source — and don't substitute behavioral prose,
+stage directions, or English summaries into a non-English scripts
+slot. That's what `instructions` is for. When the source doesn't
+provide actual utterances, omit the `scripts` field entirely (don't
+emit an empty per-language array, don't fill it with paraphrases).
+
+v0 scripts have no conditional rendering. For optional fields
+({num_installments}, {group_name}, etc.), describe the conditionality
+in `instructions` ("if num_installments is set, also mention it")
+rather than embedding optional placeholders in a script line that
+will always fire.
+
 INTERRUPTS
 
 Model interrupts as flows with `type: "interrupt"`. Set `scope` to
@@ -175,6 +214,13 @@ the specific flow ids where it's active. Express the trigger via
 `routing.entry_condition` (typically `method: "llm"`, expression in
 plain language). Resume the interrupted flow with an exit path of
 `type: "return_to_caller"` and `next_flow_id: null`.
+
+Phrases like "during the call", "at any point", "at any time", or
+"whenever the customer ..." indicate a global interrupt
+(`scope: ["global"]`), not a flow-specific exit path.
+
+Only set `scope` on interrupt flows. Omit it on happy / sad / off /
+utility flows — it's meaningless there.
 
 GUARDRAILS
 
@@ -187,12 +233,36 @@ not a guardrail.
 
 EXAMPLE TRANSCRIPT
 
-`flow.example` is a plain-text transcript. Format each turn as
-"Agent: ..." or "User: ..." on its own line. Use {variable_name}
-placeholders when natural; do not invent specific values. Extract
-verbatim from the source if an example conversation is present;
-otherwise construct a short realistic walkthrough covering the
-main steps and a typical exit.
+`flow.example`: extract verbatim when the source contains an example
+conversation for this flow. Otherwise omit — synthetic transcripts
+are generated on demand in the editor, not during parse. When
+extracted, format each turn as "Agent: ..." or "User: ..." on its
+own line, and use {variable_name} placeholders for any specific
+values that come from variables.
+
+---
+
+DON'T OVER-SPECIFY
+
+Underspecified is better than speculative. Emit a field only when
+the source warrants it.
+
+- max_turns: set only when the source describes a retry or loop
+  budget. Don't pick numbers; don't add "default" budgets.
+- assigns: emit only when the value is actually consumed by a
+  downstream condition or action. Status flags nothing reads are
+  noise.
+- capabilities: declare only when the source explicitly describes
+  an external integration (CRM update, function call, retrieval).
+  ALL CAPS words in source pseudocode (e.g., "RESCHEDULE",
+  "CALLBACK", "WELCOME") are typically flow-name references — the
+  same syntactic register as named section headers. Treat them as
+  targets for `next_flow_id`, not as capabilities to dispatch.
+- guardrails: emit only guardrails the source actually states or
+  strongly implies. If you must infer one, prefix the statement
+  with "[INFERRED] ..." so the user can review it.
+- knowledge.faq / knowledge.glossary: do not invent entries.
+  Include only what's explicitly in the source.
 
 ---
 

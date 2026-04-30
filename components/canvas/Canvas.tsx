@@ -4,6 +4,7 @@ import {
   Background,
   Controls,
   MiniMap,
+  MarkerType,
   useNodesState,
   useEdgesState,
   type Edge,
@@ -38,9 +39,7 @@ function buildGraph(spec: Spec): { nodes: Node[]; edges: Edge[] } {
     data: {
       name: f.name,
       flowType: f.type,
-      stepCount: f.steps?.length ?? 0,
       isEntry: f.id === entryId,
-      scope: f.scope,
       issues: issuesByFlow.get(f.id)?.map((i) => i.message),
     } satisfies FlowNodeData,
   }));
@@ -51,17 +50,23 @@ function buildGraph(spec: Spec): { nodes: Node[]; edges: Edge[] } {
       if (!xp.next_flow_id || !flowIds.has(xp.next_flow_id)) continue;
       const edgeId = `${f.id}__${xp.id}`;
       const edgeIssues = issuesByEdge.get(edgeId);
-      const labelSrc = xp.condition?.expression ?? xp.type;
+      const stroke = edgeIssues
+        ? "#ef4444"
+        : xp.type === "happy"
+        ? "#34d399"
+        : "#fbbf24";
+      const label = xp.condition?.expression
+        ? truncate(xp.condition.expression, 32)
+        : undefined;
       edges.push({
         id: edgeId,
         source: f.id,
         target: xp.next_flow_id,
-        label: truncate(labelSrc, 48),
+        label,
         labelStyle: { fontSize: 11, fill: "#52525b" },
         labelBgStyle: { fill: "#fafafa" },
-        style: edgeIssues
-          ? { stroke: "#ef4444", strokeWidth: 1.5 }
-          : { stroke: xp.type === "happy" ? "#34d399" : "#fbbf24", strokeWidth: 1.5 },
+        style: { stroke, strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: stroke, width: 18, height: 18 },
       });
     }
   }

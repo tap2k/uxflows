@@ -4,9 +4,7 @@ import type { FlowType } from "@/lib/schema/v0";
 export interface FlowNodeData {
   name: string;
   flowType: FlowType;
-  stepCount: number;
   isEntry: boolean;
-  scope?: string[];
   issues?: string[];
 }
 
@@ -20,13 +18,6 @@ const typeStyles: Record<FlowType, { border: string; badge: string; label: strin
 
 export function FlowNode({ data, selected }: NodeProps & { data: FlowNodeData }) {
   const style = typeStyles[data.flowType];
-  const scopeLabel =
-    data.flowType === "interrupt"
-      ? data.scope?.[0] === "global"
-        ? "scope: global"
-        : `scope: ${data.scope?.length ?? 0} flow${data.scope?.length === 1 ? "" : "s"}`
-      : null;
-
   const hasIssues = (data.issues?.length ?? 0) > 0;
   const issueTitle = hasIssues ? data.issues!.join("\n") : undefined;
 
@@ -35,7 +26,7 @@ export function FlowNode({ data, selected }: NodeProps & { data: FlowNodeData })
       title={issueTitle}
       className={`rounded-md border-2 ${
         hasIssues ? "border-red-500" : style.border
-      } bg-white px-3 py-2 min-w-[200px] max-w-[260px] text-left ${
+      } bg-white px-3.5 py-2.5 min-w-[200px] max-w-[260px] text-left ${
         selected
           ? "ring-2 ring-zinc-900 ring-offset-1 shadow-md"
           : hasIssues
@@ -55,10 +46,6 @@ export function FlowNode({ data, selected }: NodeProps & { data: FlowNodeData })
         )}
       </div>
       <div className="text-sm font-medium text-zinc-900 leading-tight">{data.name}</div>
-      <div className="mt-1 text-[11px] text-zinc-500">
-        {data.stepCount} step{data.stepCount === 1 ? "" : "s"}
-        {scopeLabel ? ` · ${scopeLabel}` : ""}
-      </div>
       <Handle type="source" position={Position.Right} className="!bg-zinc-400" />
     </div>
   );
