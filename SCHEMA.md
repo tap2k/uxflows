@@ -96,6 +96,27 @@ payment_received == None
 
 LLM conditions remain plain-language strings and are never emitted into generated code.
 
+The `calculation` method has an optional `pattern` field (regex string) for pattern-matching subtypes. When `pattern` is set, the runtime evaluates the named variable against the regex rather than the `expression`. Available wherever a `calculation`-method node appears: `exit_path.condition`, `routing.entry_condition`, `assigns[var]`, and v1 captures.
+
+---
+
+## Spec Document
+
+A serialized spec is a single JSON document wrapping one agent and its flows:
+
+```json
+{
+  "agent": { "$schema": "UX4://agent/v0", "id": "...", ... },
+  "flows": [
+    { "$schema": "UX4://flow/v0", "id": "...", ... }
+  ]
+}
+```
+
+The agent envelope appears once at the `agent` key; all flows live in the `flows` array. The agent's `entry_flow_id` must reference one of the flows in that array. Any flow id referenced by `next_flow_id` or by an interrupt flow's `scope` list must exist in `flows`.
+
+This wrapper is the on-disk and on-the-wire format. Producers (the editor, importers) emit it; consumers (the runner, the simulator) parse it.
+
 ---
 
 ## Agent Schema
@@ -125,7 +146,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
     {
       "id": "string",
       "name": "string",
-      "description": "string",
+      "description": "string (optional)",
       "kind": "retrieval | function",
       "inputs": ["variable_name"],
       "outputs": ["variable_name"]
@@ -247,13 +268,15 @@ LLM conditions remain plain-language strings and are never emitted into generate
         "type": "happy | sad | off | exit | return_to_caller",
         "condition": {
           "expression": "string",
-          "method": "llm | calculation | direct"
+          "method": "llm | calculation | direct",
+          "pattern": "string (optional, when method is calculation)"
         },
         "next_flow_id": "string | null",
         "assigns": {
           "variable_name": {
             "method": "llm | calculation | direct",
-            "value": "any"
+            "value": "any",
+            "pattern": "string (optional, when method is calculation)"
           }
         },
         "actions": [
@@ -278,6 +301,7 @@ LLM conditions remain plain-language strings and are never emitted into generate
 - **`variables`** — optional flow-scoped variable declarations. Same shape as agent-level `variables`; use the flow level for variables produced or consumed only inside this flow, the agent level for variables shared across flows. Declarations enrich an already-existing variable with `type` and `description` — they do not create variables.
 - **`routing.entry_condition`** — when this flow should be active. For interrupt flows: a trigger phrase or intent. For sequential flows: rarely needed; entry follows the incoming edge. Single condition by design — combine multiple checks inline using `and`/`or` in a calculation expression, or describe them together in an llm condition.
 - **`routing.exit_paths`** — how the flow ends. `return_to_caller` is the special exit for interrupt flows, resuming the interrupted flow. `assigns` produces variables available to the next flow.
+- **`routing.exit_paths[].condition`** — required for routable exits, omitted for `type: "return_to_caller"` (the only exit on an interrupt flow; the stack pop is unconditional). A `condition` may also be omitted when the exit is unconditional in normal flow — for example, the sad exit a flow falls back to when `max_turns` exhausts. The runtime treats a missing condition as always-takeable.
 - **`routing.exit_paths[].actions`** — non-conversational side effects fired when this exit is taken (e.g., write a record to a CRM, send a confirmation SMS). Each entry references an `agent.capabilities[]` catalog entry by `capability_id`. Inputs are resolved implicitly: the runtime reads the capability's `inputs` list and pulls those variable names from conversation scope at the moment the exit fires — no explicit binding syntax. Any `outputs` declared on the referenced capability are not bound — exit-path actions have no output binding syntax. The runtime fires actions in declaration order; in v0 ordering is best-effort and idempotency is the runtime's responsibility. Distinct from v1 `tool` steps, which dispatch the same capabilities *during* the conversation and bind outputs into variable scope.
 
 ---
