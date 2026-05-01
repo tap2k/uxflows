@@ -18,7 +18,7 @@ All nine chunks shipped. Editor is functionally complete for v0:
 
 Beyond plan, also shipped: Variables editor (was post-MVP), Tables CRUD (was post-MVP), `entry_flow_id` picker in Agent sheet, delete buttons in inspectors, schema-doc sync, AGENT-SPEC-PROMPT.txt rewritten for one-shot v0 JSON output.
 
-Real remaining gap: imperative LLM parse in-app (Settings sheet + provider dispatch + Parse modal). External LLM path already works — paste source through any frontier LLM with [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt), paste resulting JSON into Import.
+Real remaining gap: in-app LLM authoring as an **interactive chat** (BYOK). Same plumbing the originally-planned Parse modal would have needed — Settings sheet, provider dispatch — but the surface is a chat panel that mutates the spec via tool calls (1:1 with existing store mutators) instead of a one-shot JSON parse. This subsumes both the previously-deferred imperative text import ("import this script: …") and the deferred generate-example-transcript button ("generate an example for flow_greet"). External LLM path still works as a fallback — paste source through any frontier LLM with [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt), paste resulting JSON into Import. See [chunk 10](#10-interactive-llm-chat-byok).
 
 ## Goal
 
@@ -198,6 +198,36 @@ Originally specced as a persistent left sidebar with tabs. Implementation split 
 
 **Files:** new `lib/validation/graphRules.ts`; [components/canvas/FlowNode.tsx](./components/canvas/FlowNode.tsx) reads validation status from data.
 
+### 10. Interactive LLM chat (BYOK)
+
+Editor-resident chat that authors and edits specs via tool calls. Replaces the previously-deferred one-shot imperative parse.
+
+Why chat over a parse modal: chat tool-calls mutate the same zustand store the inspectors do — the LLM becomes just another UI surface. Consistent with "canvas is canonical" instead of fighting it via text round-tripping. Edit-existing falls out for free since create-new and edit-existing are both sequences of mutator calls against whatever's currently in the store.
+
+**Sub-chunks (ordered):**
+
+- **10a. Settings sheet** — toolbar button → modal with a single Google API key field. **Google (Gemini) only in MVP**; both provider and model are hard-coded in code. Key stored per-browser in localStorage; copy flags BYOK and warns against shared machines. Provider/model selectors land alongside the second provider, not before.
+- **10b. Provider dispatch** — `lib/llm/{types,dispatch}.ts` + `lib/llm/providers/google.ts`. Neutral `ChatRequest` / `ChatResponse` shape (system prompt, messages, tools as JSON schema, tool calls round-tripped with provider-issued ids). Only the Google adapter ships, but the dispatch signature takes a `ProviderId` so adding Anthropic/OpenAI later is a new file, not a refactor. Tool-calling mode only; no streaming in MVP.
+- **10c. Tool schema** — `lib/llm/tools.ts` exposing existing store mutators (`addFlow`, `updateFlow`, `removeFlow`, `addExitPath`, `updateExitPath`, `removeExitPath`, agent-level edits, scripts edits, etc.) as tools. LLM cannot do anything the user cannot do via inspectors.
+- **10d. Chat panel** — right-side panel (or toggleable drawer; final UI shape decided at ship time). Message list, input, tool calls rendered inline so the user sees what mutated. Conversation state per-spec in localStorage, not persisted to spec JSON.
+- **10e. System prompt** — seeded from [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt)'s domain content but rewritten for tool-call mode (operate on the current spec, emit tool calls, ask for clarification when ambiguous). Expect this to diverge from the import-oriented prompt over time. Full spec passed as context each turn — cheap at MVP scale.
+- **10f. Validation feedback loop** — after each LLM turn with tool calls, run Ajv + graph rules; surface failures back into the conversation so the model can self-correct on the next turn.
+
+**Definition of done (extends top-level DoD):**
+- With an empty spec, user describes an agent in chat and sees flows / edges / inspectors populated by LLM tool calls.
+- With an existing spec, user asks for incremental edits ("split flow_greet into greet + collect_name", "add a guardrail about credit-card numbers") and they apply via tool calls.
+- Invalid tool-call sequences trigger validation errors visible in chat; the LLM recovers on the next turn.
+
+**Watchlist (not blocking MVP):**
+- **Chat vs import as separate surfaces.** One-shot import (paste source → spec) and conversational editing are conceptually distinct intents. MVP collapses them into one chat panel; if usage shows the bulk-import case wants its own less-conversational surface, split later.
+- **Multi-provider support.** Anthropic and OpenAI adapters, plus the provider/model selector UI, all land together when there's a second provider to justify them. The dispatch signature is provider-keyed from day one so this is additive.
+- **Prompt caching.** Gemini caches stable prefixes implicitly — no API work needed as long as we keep `system prompt → tool schema → spec → conversation tail` ordering consistent across turns. Explicit Context Caching API only matters if we later want TTL control or to charge cached tokens to a named handle. Anthropic/OpenAI behave differently; revisit when adding a second provider.
+- **Streaming.** Skip for MVP; add if latency feels bad in practice.
+- **Context strategy.** Full spec each turn is fine at MVP scale. Switch to selective context when specs get big enough to matter.
+- **Richer clarification UI.** Chat may eventually want structured prompts (multi-select pickers, inline diff confirmations) rather than free-text turn-taking. Defer.
+
+**Files (planned):** `lib/llm/{dispatch,tools,prompts}.ts`, `components/sheets/SettingsSheet.tsx`, `components/chat/ChatPanel.tsx`, `lib/store/chat.ts`.
+
 ---
 
 ## Post-MVP (deferred, with reasons)
@@ -209,8 +239,6 @@ Originally specced as a persistent left sidebar with tabs. Implementation split 
   - **Unreachable calculation exits.** If an `exit_path.condition` is `method: "calculation"` and reads variable `X`, but no `exit_path.assigns` on any flow reachable from `entry_flow_id` ever produces `X`, the path is dead. Found a real instance in `examples/coffee.json` where `flow_greet`'s coffee/tea exits gated on `drink_type` but nothing set `drink_type` — the conversation deadlocked in flow_greet. Fix is usually changing the exit to `method: "llm"` with a `direct` assign that sets the variable.
   - **Knowledge-coverage gaps that invite confabulation.** When `agent.system_prompt` (or `flow.instructions`) mentions a concept that has no entry in `agent.knowledge.glossary`, no row in `agent.knowledge.tables`, and no capability matching the term, the LLM will invent details at runtime. Coffee.json mentioned "pastries" with no pastry table → LLM cheerfully invented "croissants, muffins, and danishes." Hard to catch perfectly (free text vs. structured knowledge), but a heuristic surfacing nouns in prompts not present in any structured knowledge would catch the obvious cases.
 - **v1 schema additions** — `tool` step (mid-conversation capability dispatch), `call` step (sub-flow invocation), `pipecat` hints. Canvas and inspector adapt when the schema lands; expect a capability picker on tool steps. Capability catalog (`agent.capabilities[]`) and post-exit dispatch (`exit_path.actions[]`) are already in v0.
-- **Imperative text import (in-app parse step)** — paste a script/process doc, LLM converts directly to v0 JSON in one shot, schema-constrained. One-way; lands in the same store as the existing import path. Same prompt content as [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt); the in-app version skips the round-trip through an external LLM and uses a user-provided API key. The two coexist (external = no key needed, in-app = one click).
-- **Generate example transcript button.** The parse prompt only extracts example transcripts verbatim when present in the source; it does not invent them. Add a "Generate example" button in [FlowInspector](./components/inspector/FlowInspector.tsx) (next to "Open scripts sheet") that calls the LLM provider with the current flow's `instructions` / `scripts` / `routing` and populates `flow.example`. Reuses the same LLM plumbing as imperative import; lands after that ships.
 - **Export as declarative text** — on-demand stringification of the spec for skim and stakeholder share. Read-only output; not a live mirror.
 - **Flow id rename with cascade update.** Ids are immutable in MVP; delete-and-recreate to change.
 - **Skip dagre re-layout when topology hasn't changed.** Today every spec mutation (including each keystroke in any inspector field) re-runs `buildGraph` + `dagre.layout` + `setNodes`/`setEdges` in [Canvas.tsx](./components/canvas/Canvas.tsx). Fine at MVP scale; will lag at 100+ flows. Surgical fix: re-layout only when flow ids or edge connectivity changes; for pure data updates (name, instructions, condition text), update node `data` in place, keep positions. Preserves live-preview while killing the hot-path cost.

@@ -4,22 +4,28 @@ import { Canvas } from "@/components/canvas/Canvas";
 import { FlowInspector } from "@/components/inspector/FlowInspector";
 import { EdgeInspector } from "@/components/inspector/EdgeInspector";
 import { ImportExportToolbar } from "@/components/toolbar/ImportExport";
+import { SettingsSheet } from "@/components/sheets/SettingsSheet";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 import { useSpecStore } from "@/lib/store/spec";
 import {
   clearSavedSpec,
   loadSavedSpec,
   startSpecPersistence,
 } from "@/lib/store/persistence";
+import { loadSavedSettings } from "@/lib/store/settings";
 import { validateSpec } from "@/lib/validation/ajv";
 
 export default function Home() {
   const spec = useSpecStore((s) => s.spec);
   const setSpec = useSpecStore((s) => s.setSpec);
   const [hydrating, setHydrating] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => startSpecPersistence(), []);
 
   useEffect(() => {
+    loadSavedSettings();
     const saved = loadSavedSpec();
     if (saved) {
       const result = validateSpec(saved);
@@ -79,7 +85,11 @@ export default function Home() {
             )}
           </div>
           <div className="ml-auto flex items-center gap-4">
-            <ImportExportToolbar />
+            <ImportExportToolbar
+              onOpenSettings={() => setSettingsOpen(true)}
+              onToggleChat={() => setChatOpen((v) => !v)}
+              chatOpen={chatOpen}
+            />
             {spec && (
               <span className="text-xs text-zinc-500">
                 {flowCount} flow{flowCount === 1 ? "" : "s"} ({interruptCount} interrupt{interruptCount === 1 ? "" : "s"})
@@ -93,8 +103,17 @@ export default function Home() {
           </div>
           <FlowInspector />
           <EdgeInspector />
+          <ChatPanel
+            open={chatOpen}
+            onClose={() => setChatOpen(false)}
+            onOpenSettings={() => {
+              setChatOpen(false);
+              setSettingsOpen(true);
+            }}
+          />
         </main>
       </div>
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
     </>
   );
 }

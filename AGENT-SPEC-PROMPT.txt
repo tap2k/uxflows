@@ -39,12 +39,14 @@ V0 SCHEMA
 
 {
   "agent": {
+    "$schema": "UX4://agent/v0",
     "id": "agent_<snake_case>",
     "meta": {
       "name": "string",
       "purpose": "one-sentence description",
       "client": "string (optional)",
-      "languages": ["EN", "es-MX", "..."]
+      "languages": ["EN", "es-MX", "..."],
+      "modes": ["voice", "text"]
     },
     "system_prompt": "string (optional, verbatim if source provides one)",
     "chatbot_initiates": true,
@@ -62,10 +64,10 @@ V0 SCHEMA
       {
         "id": "cap_<snake_case>",
         "name": "snake_case_dispatch_name",
-        "description": "when/why this is used",
+        "description": "when/why this is used (optional)",
         "kind": "function | retrieval",
-        "inputs": ["variable_name"],
-        "outputs": ["variable_name"]
+        "inputs": ["variable_name (optional)"],
+        "outputs": ["variable_name (optional; omit for fire-and-forget)"]
       }
     ],
     "knowledge": {
@@ -90,6 +92,7 @@ V0 SCHEMA
   },
   "flows": [
     {
+      "$schema": "UX4://flow/v0",
       "id": "<snake_case>",
       "name": "Human-readable",
       "description": "optional",
@@ -108,7 +111,8 @@ V0 SCHEMA
       "routing": {
         "entry_condition": {
           "expression": "trigger phrase or intent (interrupt flows only)",
-          "method": "llm | calculation | direct"
+          "method": "llm | calculation | direct",
+          "pattern": "string (optional, when method is calculation)"
         },
         "exit_paths": [
           {
@@ -116,11 +120,16 @@ V0 SCHEMA
             "type": "happy | sad | off | exit | return_to_caller",
             "condition": {
               "expression": "string (omit for unconditional exits)",
-              "method": "llm | calculation | direct"
+              "method": "llm | calculation | direct",
+              "pattern": "string (optional, when method is calculation)"
             },
             "next_flow_id": "<id> | null",
             "assigns": {
-              "<variable_name>": { "method": "direct", "value": "any" }
+              "<variable_name>": {
+                "method": "llm | calculation | direct",
+                "value": "any (used when method is direct)",
+                "pattern": "string (optional, when method is calculation)"
+              }
             },
             "actions": [{ "capability_id": "cap_<id>" }]
           }
@@ -151,6 +160,15 @@ use the ISO 639 two-letter code ("Hindi" → "hi", "Spanish" → "es").
 Use BCP-47 only if the source specifies a region ("Mexican Spanish"
 → "es-MX").
 
+Modes: `agent.meta.modes` is required, with at least one of "voice"
+or "text". "voice" = phone or browser-mic; "text" = chat (web,
+WhatsApp, SMS, etc.). Infer from the source — IVR / call-center /
+phone-script material is "voice"; chatbot / messaging / WhatsApp
+material is "text". If the source clearly serves both, include both.
+Default to ["voice"] when unclear, since most authored material in
+this product is voice. Don't add mode-specific length or formatting
+fields — that behavior lives in `instructions`.
+
 Methods (used in conditions, assigns, captures):
 - "llm" — semantic understanding by the model. Plain-language
   expression. Most common.
@@ -170,6 +188,18 @@ Condition expressions:
   verified", not "customer says they are {customer_name}").
 - For `method: "calculation"`, variables appear bare in expressions
   (`verified == True`, `loan_amount > 50000`).
+- For `method: "calculation"` with regex pattern matching, set the
+  optional `pattern` field to the regex string and put the variable
+  name in `expression`. The runtime tests the variable's value
+  against the pattern instead of evaluating the expression. Use this
+  for shape checks (zip code, account number format, etc.), not for
+  semantic intent — that's what `llm` is for.
+
+Assigns: `assigns[var]` accepts the same three methods. `direct` =
+literal `value`. `calculation` = expression (or `pattern` over a
+named variable) producing the value. `llm` = extract the value from
+the conversation by description. Don't default to `direct` when the
+value actually comes from the conversation — that's `llm`.
 
 exit_path.type semantics:
 - "happy" — successful continuation along the intended path.
@@ -248,7 +278,9 @@ Underspecified is better than speculative. Emit a field only when
 the source warrants it.
 
 - max_turns: set only when the source describes a retry or loop
-  budget. Don't pick numbers; don't add "default" budgets.
+  budget. Don't pick numbers; don't add "default" budgets. When
+  set, the flow needs an unconditional sad exit path (omit the
+  `condition`) for the runtime to follow on exhaustion.
 - assigns: emit only when the value is actually consumed by a
   downstream condition or action. Status flags nothing reads are
   noise.
@@ -258,11 +290,21 @@ the source warrants it.
   "CALLBACK", "WELCOME") are typically flow-name references — the
   same syntactic register as named section headers. Treat them as
   targets for `next_flow_id`, not as capabilities to dispatch.
+  `description`, `inputs`, and `outputs` are all optional — emit
+  only what the source warrants. Omit `outputs` for fire-and-forget
+  side effects (a CRM write that returns nothing usable). `name` is
+  the runtime dispatch identifier (snake_case, author-controlled,
+  stable across spec edits); `id` is an editor-side handle for
+  cross-references inside this spec. The two can match.
 - guardrails: emit only guardrails the source actually states or
   strongly implies. If you must infer one, prefix the statement
   with "[INFERRED] ..." so the user can review it.
 - knowledge.faq / knowledge.glossary: do not invent entries.
-  Include only what's explicitly in the source.
+  Include only what's explicitly in the source. `glossary` and
+  `tables` are agent-level only. `faq` exists at both agent and
+  flow level — put an entry on a flow only if it's specific to that
+  flow and would travel with it on reuse; otherwise put it on the
+  agent.
 
 ---
 

@@ -1,0 +1,80 @@
+import { useState } from "react";
+import { SheetShell } from "./SheetShell";
+import { useSettingsStore } from "@/lib/store/settings";
+
+interface SettingsSheetProps {
+  onClose: () => void;
+}
+
+export function SettingsSheet({ onClose }: SettingsSheetProps) {
+  const stored = useSettingsStore((s) => s.googleApiKey);
+  const setGoogleApiKey = useSettingsStore((s) => s.setGoogleApiKey);
+  const [value, setValue] = useState(stored);
+  const [reveal, setReveal] = useState(false);
+
+  function save() {
+    setGoogleApiKey(value.trim());
+    onClose();
+  }
+
+  function clear() {
+    setValue("");
+    setGoogleApiKey("");
+  }
+
+  return (
+    <SheetShell
+      title="Settings"
+      subtitle="Bring-your-own Google API key for chat-based authoring."
+      onClose={onClose}
+      maxWidth="max-w-lg"
+    >
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-zinc-700">Google API key</label>
+        <div className="flex gap-2">
+          <input
+            type={reveal ? "text" : "password"}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="AIza…"
+            className="flex-1 rounded border border-zinc-300 px-2 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-zinc-400"
+          />
+          <button
+            onClick={() => setReveal((r) => !r)}
+            className="rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-100"
+          >
+            {reveal ? "hide" : "show"}
+          </button>
+        </div>
+        <p className="text-[11px] text-zinc-500">
+          Stored in this browser&apos;s localStorage. Anyone with access to this browser can read it. Do not use a shared machine.
+          Get a key at{" "}
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-zinc-900"
+          >
+            aistudio.google.com
+          </a>
+          .
+        </p>
+      </div>
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <button
+          onClick={clear}
+          disabled={!stored && !value}
+          className="rounded-md border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-40"
+        >
+          Clear
+        </button>
+        <button
+          onClick={save}
+          className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700"
+        >
+          Save
+        </button>
+      </div>
+    </SheetShell>
+  );
+}

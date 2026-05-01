@@ -15,9 +15,9 @@ interface SpecState {
   updateFlow: (id: string, patch: Partial<Flow>) => void;
   updateAgent: (patch: Partial<Agent>) => void;
   updateExitPath: (flowId: string, exitPathId: string, patch: Partial<ExitPath>) => void;
-  addFlow: () => void;
+  addFlow: () => string;
   removeFlow: (id: string) => void;
-  addExitPath: (sourceFlowId: string, targetFlowId: string) => void;
+  addExitPath: (sourceFlowId: string, targetFlowId: string | null) => string | null;
   removeExitPath: (flowId: string, exitPathId: string) => void;
 }
 
@@ -79,9 +79,9 @@ export const useSpecStore = create<SpecState>((set) => ({
         },
       };
     }),
-  addFlow: () =>
+  addFlow: () => {
+    const newId = genId("flow");
     set((state) => {
-      const newId = genId("flow");
       const flow = blankFlow(newId);
       if (!state.spec) {
         return {
@@ -93,7 +93,9 @@ export const useSpecStore = create<SpecState>((set) => ({
         spec: { ...state.spec, flows: [...state.spec.flows, flow] },
         selection: { kind: "flow", id: newId },
       };
-    }),
+    });
+    return newId;
+  },
   removeFlow: (id) =>
     set((state) => {
       if (!state.spec) return {};
@@ -121,10 +123,13 @@ export const useSpecStore = create<SpecState>((set) => ({
         selection: null,
       };
     }),
-  addExitPath: (sourceFlowId, targetFlowId) =>
+  addExitPath: (sourceFlowId, targetFlowId) => {
+    const xpId = genId("xp");
+    let added = false;
     set((state) => {
       if (!state.spec) return {};
-      const xpId = genId("xp");
+      if (!state.spec.flows.some((f) => f.id === sourceFlowId)) return {};
+      added = true;
       return {
         spec: {
           ...state.spec,
@@ -143,7 +148,9 @@ export const useSpecStore = create<SpecState>((set) => ({
         },
         selection: { kind: "edge", flowId: sourceFlowId, exitPathId: xpId },
       };
-    }),
+    });
+    return added ? xpId : null;
+  },
   removeExitPath: (flowId, exitPathId) =>
     set((state) => {
       if (!state.spec) return {};

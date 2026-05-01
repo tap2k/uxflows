@@ -8,6 +8,12 @@ import { GuardrailsSheet } from "@/components/sheets/GuardrailsSheet";
 import { CapabilitiesSheet } from "@/components/sheets/CapabilitiesSheet";
 import { KnowledgeSheet } from "@/components/sheets/KnowledgeSheet";
 
+interface ImportExportToolbarProps {
+  onOpenSettings: () => void;
+  onToggleChat: () => void;
+  chatOpen: boolean;
+}
+
 const buttonClass =
   "rounded-md border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 disabled:hover:bg-transparent";
 
@@ -26,7 +32,11 @@ function tryParseSpecText(input: string): { ok: true; data: unknown } | { ok: fa
   }
 }
 
-export function ImportExportToolbar() {
+export function ImportExportToolbar({
+  onOpenSettings,
+  onToggleChat,
+  chatOpen,
+}: ImportExportToolbarProps) {
   const spec = useSpecStore((s) => s.spec);
   const setSpec = useSpecStore((s) => s.setSpec);
   const [importOpen, setImportOpen] = useState(false);
@@ -86,6 +96,16 @@ export function ImportExportToolbar() {
         </button>
         <button onClick={exportSpec} disabled={!spec} className={buttonClass}>
           Export
+        </button>
+        <span className="w-px h-5 bg-zinc-200" />
+        <button
+          onClick={onToggleChat}
+          className={`${buttonClass} ${chatOpen ? "bg-zinc-100" : ""}`}
+        >
+          {chatOpen ? "Hide chat" : "Chat"}
+        </button>
+        <button onClick={onOpenSettings} className={buttonClass}>
+          Settings
         </button>
       </div>
       {error && (
