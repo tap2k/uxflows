@@ -23,14 +23,25 @@ import { findSection, fromYaml, joinFrontmatter, splitFrontmatter, splitSections
 //   tests/decisions/<id>.yaml  a routing matrix: all fields as YAML
 //
 // The pre-markdown JSON files (*.test.json, *.persona.json, *.rubric.json,
-// *.gold.json, *.decision.json) still load so a repo can be migrated; nothing
-// writes them.
+// *.gold.json, *.decision.json) are read only by the legacy loader behind
+// flowstore-migrate (`legacy: true`); the product never loads or writes them.
 
-const CASE_RE = /^tests\/cases\/(.+)\.(md|test\.json)$/;
-const PERSONA_RE = /^tests\/personas\/(.+)\.(md|persona\.json)$/;
-const RUBRIC_RE = /^tests\/rubrics\/(.+)\.(md|rubric\.json)$/;
-const GOLD_RE = /^tests\/gold\/(.+)\.(md|gold\.json)$/;
-const DECISION_RE = /^tests\/decisions\/(.+)\.(ya?ml|decision\.json)$/;
+const RES = {
+  current: {
+    cases: /^tests\/cases\/(.+)\.(md)$/,
+    personas: /^tests\/personas\/(.+)\.(md)$/,
+    rubrics: /^tests\/rubrics\/(.+)\.(md)$/,
+    golds: /^tests\/gold\/(.+)\.(md)$/,
+    decisions: /^tests\/decisions\/(.+)\.(ya?ml)$/,
+  },
+  legacy: {
+    cases: /^tests\/cases\/(.+)\.(test\.json)$/,
+    personas: /^tests\/personas\/(.+)\.(persona\.json)$/,
+    rubrics: /^tests\/rubrics\/(.+)\.(rubric\.json)$/,
+    golds: /^tests\/gold\/(.+)\.(gold\.json)$/,
+    decisions: /^tests\/decisions\/(.+)\.(decision\.json)$/,
+  },
+};
 
 const CASE_SCHEMA = "flowstore://test/case/v0";
 const PERSONA_SCHEMA = "flowstore://test/persona/v0";
@@ -38,17 +49,27 @@ const RUBRIC_SCHEMA = "flowstore://test/rubric/v0";
 const GOLD_SCHEMA = "flowstore://test/gold/v0";
 const DECISION_SCHEMA = "flowstore://test/decision-test/v0";
 
-export function loadTestingArtifacts(files: FileMap, errors: LoadError[]): TestingArtifacts {
-  files = migrateTestingFiles(files);
+export function loadTestingArtifacts(
+  files: FileMap,
+  errors: LoadError[],
+  opts: { legacy?: boolean } = {},
+): TestingArtifacts {
+  const re = opts.legacy ? RES.legacy : RES.current;
+  if (opts.legacy) files = migrateTestingFiles(files);
   const ignored: IgnoredFile[] = [];
   return {
-    testCases: loadCollection<TestCase>(files, errors, ignored, CASE_RE, TestCaseSchema, CASE_SCHEMA, parseCase),
-    personas: loadCollection<Persona>(files, errors, ignored, PERSONA_RE, PersonaSchema, PERSONA_SCHEMA, parsePersona),
-    rubrics: loadCollection<Rubric>(files, errors, ignored, RUBRIC_RE, RubricSchema, RUBRIC_SCHEMA, parseRubric),
-    golds: loadCollection<Gold>(files, errors, ignored, GOLD_RE, GoldSchema, GOLD_SCHEMA, parseGold),
-    decisions: loadCollection<DecisionTest>(files, errors, ignored, DECISION_RE, DecisionTestSchema, DECISION_SCHEMA, parseDecision),
+    testCases: loadCollection<TestCase>(files, errors, ignored, re.cases, TestCaseSchema, CASE_SCHEMA, parseCase),
+    personas: loadCollection<Persona>(files, errors, ignored, re.personas, PersonaSchema, PERSONA_SCHEMA, parsePersona),
+    rubrics: loadCollection<Rubric>(files, errors, ignored, re.rubrics, RubricSchema, RUBRIC_SCHEMA, parseRubric),
+    golds: loadCollection<Gold>(files, errors, ignored, re.golds, GoldSchema, GOLD_SCHEMA, parseGold),
+    decisions: loadCollection<DecisionTest>(files, errors, ignored, re.decisions, DecisionTestSchema, DECISION_SCHEMA, parseDecision),
     ignored,
   };
+}
+
+// Paths of pre-markdown test files, so the loader can point at them.
+export function legacyTestingPaths(files: FileMap): string[] {
+  return Object.keys(files).filter((p) => Object.values(RES.legacy).some((re) => re.test(p)));
 }
 
 // Inverse of loadTestingArtifacts: the canonical file for each artifact.

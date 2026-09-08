@@ -138,7 +138,7 @@ Prose-bearing artifacts are markdown with frontmatter; the body holds the artifa
 
 ## Migration
 
-`flowstore-migrate <dir>` converts a project that still carries the pre-markdown JSON layout (`agent.json`, `*.flow.json`, `*.scripts.csv`, `*.test.json` and the other test files, `models/*.json`) in place, then reloads the result and reports any entity that differs from the original. The loader also reads that old layout, so an unconverted repo still opens; nothing writes it any more.
+A project in the pre-markdown JSON layout (`agent.json`, `*.flow.json`, `*.scripts.csv`, `*.test.json` and the other JSON test files, `models/*.json`) does not load. The loader says so and names the fix: `flowstore-migrate <project-dir>` converts it in place, then reloads the result and refuses to finish if any entity differs from the original. A markdown project with old files left beside it is refused the same way, listing them. The old layout is read by nothing else.
 
 ## The spec prompt
 

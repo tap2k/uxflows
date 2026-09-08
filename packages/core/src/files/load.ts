@@ -5,7 +5,9 @@ import { coerceCell } from "@flowstore/core/codegen/knowledgeCsv";
 import { loadModelsConfig } from "./models";
 import { loadTestingArtifacts } from "./testing";
 import { loadComments } from "./comments";
-import { loadLegacyProject } from "./legacy";
+import { legacySpecPaths } from "./legacy";
+import { legacyTestingPaths } from "./testing";
+import { legacyModelsPaths } from "./models";
 import type { FileMap, LoadError, LoadResult } from "./types";
 import {
   findSection,
@@ -23,8 +25,8 @@ import {
 // collection accepts file form or directory form (FILE-MODEL § the shape
 // rule); ids come from filenames for per-file entities and from explicit
 // `### id` / `- id:` markers inside a body. A project that still carries the
-// pre-markdown JSON layout (agent.json at the root) loads through
-// loadLegacyProject so it can be migrated.
+// pre-markdown JSON layout does not load: the error names flowstore-migrate,
+// which is the only reader of that layout.
 
 const FLOW_RE = /^flows\/(.+)\.md$/;
 const CAPABILITY_RE = /^capabilities\/(.+)\.md$/;
@@ -52,18 +54,25 @@ export const AGENT_FILE = "agent.md";
 export function isFileMapBundle(data: unknown): data is FileMap {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
-  const hasRoot = AGENT_FILE in obj || "agent.json" in obj;
-  return hasRoot && Object.values(obj).every((v) => typeof v === "string");
+  return AGENT_FILE in obj && Object.values(obj).every((v) => typeof v === "string");
 }
 
 export function isLegacyLayout(files: FileMap): boolean {
   return files[AGENT_FILE] === undefined && files["agent.json"] !== undefined;
 }
 
-export function loadProject(files: FileMap): LoadResult {
-  if (isLegacyLayout(files)) return loadLegacyProject(files);
+export const MIGRATE_HINT = "this project is in the pre-markdown JSON layout; run `flowstore-migrate <project-dir>` to convert it";
 
+export function loadProject(files: FileMap): LoadResult {
   const errors: LoadError[] = [];
+  const empty = { spec: null, modelsConfig: null, comments: [], testingArtifacts: { testCases: [], personas: [], rubrics: [], golds: [], decisions: [], ignored: [] } };
+  if (isLegacyLayout(files)) return { ...empty, errors: [{ message: MIGRATE_HINT }] };
+  // A markdown project must not carry old files beside the new ones: the
+  // loader would silently ignore them, and whatever they hold would be lost.
+  const stale = [...legacySpecPaths(files), ...legacyTestingPaths(files), ...legacyModelsPaths(files)];
+  for (const path of stale) errors.push({ path, message: `pre-markdown file beside the markdown layout; ${MIGRATE_HINT}` });
+  if (stale.length > 0 && files[AGENT_FILE] !== undefined) return { ...empty, errors };
+
   if (files["flowstore.yaml"] !== undefined) {
     const manifest = attempt(errors, "flowstore.yaml", () => fromYaml<unknown>(files["flowstore.yaml"], "flowstore.yaml"));
     if (manifest !== null) {

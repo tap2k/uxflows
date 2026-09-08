@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { fromYaml, loadProject, loadTestingArtifacts, parseAgent } from "@flowstore/core/files";
+import { decomposeSpec, decomposeTestingArtifacts, fromYaml, loadProject, loadTestingArtifacts, parseAgent } from "@flowstore/core/files";
+import type { Spec } from "@flowstore/core/schema/v0";
 
 // Parse one emitted markdown artifact through the loader.
 const caseOf = (files: Record<string, string>, id: string) => loadTestingArtifacts({ [`tests/cases/${id}.md`]: files[`tests/cases/${id}.md`] }, []).testCases[0] as Record<string, unknown>;
@@ -11,6 +12,26 @@ import { ResultSchema } from "@flowstore/core/schema/files/result";
 import { buildStudyBundle, parseStudyBundle } from "../src/bundle";
 import type { CellState, Scenario } from "../src/types";
 import { cellKey } from "../src/types";
+
+// Markdown-layout fixtures: a prompt-only agent, and a one-flow spec project.
+const promptOnly = (extra: Record<string, string> = {}) => ({
+  "agent.md": "---\nid: agent_p\nname: p\nidentity: P\npurpose: p\nmodality: text\nentry_flow_id: \"\"\n---\np\n",
+  ...extra,
+});
+const specProjectSpec: Spec = {
+  agent: {
+    $schema: "flowstore://spec/agent/v0", id: "agent_spec", name: "spec-agent",
+    meta: { identity: "Asha", purpose: "Remind patients about appointments.", modality: "voice" },
+    chatbot_initiates: true, entry_flow_id: "greet",
+  },
+  flows: [{
+    $schema: "flowstore://spec/flow/v0", id: "greet", name: "Greet", type: "happy",
+    instructions: "Greet the caller and confirm the appointment.",
+    exit_paths: [{ id: "xp_done", goto: "END", condition: { expression: "true", method: "direct" } }],
+  }],
+};
+const gold = (g: Record<string, unknown>) => decomposeTestingArtifacts({ testCases: [], personas: [], rubrics: [], golds: [{ $schema: "flowstore://test/gold/v0", ...g } as never], decisions: [], ignored: [] });
+const testCase = (c: Record<string, unknown>) => decomposeTestingArtifacts({ testCases: [{ $schema: "flowstore://test/case/v0", ...c } as never], personas: [], rubrics: [], golds: [], decisions: [], ignored: [] });
 
 const u = (text: string) => ({ role: "user" as const, text });
 const a = (text: string) => ({ role: "agent" as const, text });
@@ -146,8 +167,7 @@ describe("buildStudyBundle", () => {
     // The imported gold lives at a path unrelated to the scenario id; the
     // scenario's goldPath (recorded at import) targets it, so export
     // overwrites the original instead of minting a duplicate file.
-    const origGold = JSON.stringify({
-      $schema: "flowstore://test/gold/v0",
+    const origGold = gold({
       id: "gold-orig",
       name: "Refill request",
       turns: scenarios[0].turns,
@@ -161,13 +181,11 @@ describe("buildStudyBundle", () => {
       agentId: "agent-test",
       prompt: "p",
       models,
-      scenarios: [{ ...scenarios[0], goldPath: "tests/gold/gold-orig.gold.json" }],
+      scenarios: [{ ...scenarios[0], goldPath: "tests/gold/gold-orig.md" }],
       cells,
-      sourceFiles: { "tests/gold/gold-orig.gold.json": origGold },
+      sourceFiles: origGold,
     });
     expect(roundTrip["tests/gold/s1.md"]).toBeUndefined();
-    // Re-emitted in the markdown layout under the gold's own id; the legacy file goes.
-    expect(roundTrip["tests/gold/gold-orig.gold.json"]).toBeUndefined();
     const parsed = goldOf_(roundTrip, "gold-orig")!;
     expect(parsed.id).toBe("gold-orig");
     expect(parsed.blessed_at).toBe("2026-07-01T00:00:00Z");
@@ -176,7 +194,7 @@ describe("buildStudyBundle", () => {
   });
 
   it("editing an imported gold's turns drops its blessing on export", () => {
-    const origGold = JSON.stringify({
+    const origGold = gold({
       id: "gold-orig",
       turns: [u("hi"), a("Original reply.")],
       blessed_at: "2026-07-01T00:00:00Z",
@@ -189,11 +207,11 @@ describe("buildStudyBundle", () => {
         {
           ...scenarios[0],
           turns: [u("hi"), a("Edited reply."), u("refill please"), a("Sure.")],
-          goldPath: "tests/gold/gold-orig.gold.json",
+          goldPath: "tests/gold/gold-orig.md",
         },
       ],
       cells,
-      sourceFiles: { "tests/gold/gold-orig.gold.json": origGold },
+      sourceFiles: origGold,
     });
     const parsed = goldOf_(edited, "gold-orig")!;
     expect(parsed.blessed_at).toBeUndefined();
@@ -230,16 +248,10 @@ describe("buildStudyBundle", () => {
   });
 
   it("a gold whose user turns mismatch the case passes through untouched — scenario stays user-only", () => {
-    const mismatch = {
-      "agent.json": JSON.stringify({ system_prompt: "p" }),
-      "tests/cases/s1.test.json": JSON.stringify({ $schema: "flowstore://test/case/v0", id: "s1", user_turns: ["hi"], language: "EN" }),
-      "tests/gold/s1.gold.json": JSON.stringify({
-        $schema: "flowstore://test/gold/v0",
-        id: "s1",
-        turns: [u("DIFFERENT SCRIPT"), a("reply")],
-        blessed_at: "2026-07-01T00:00:00Z",
-      }),
-    };
+    const mismatch = promptOnly({
+      ...testCase({ id: "s1", user_turns: ["hi"], language: "EN" }),
+      ...gold({ id: "s1", turns: [u("DIFFERENT SCRIPT"), a("reply")], blessed_at: "2026-07-01T00:00:00Z" }),
+    });
     const parsed = parseStudyBundle(mismatch);
     expect(parsed.scenarios[0].turns).toEqual([u("hi")]);
     expect(parsed.scenarios[0].goldPath).toBeUndefined();
@@ -253,29 +265,11 @@ describe("buildStudyBundle", () => {
       cells: {},
       sourceFiles: mismatch,
     });
-    expect(out["tests/gold/s1.gold.json"]).toBe(mismatch["tests/gold/s1.gold.json"]);
-    expect(out["tests/gold/s1.md"]).toBeUndefined();
+    expect(out["tests/gold/s1.md"]).toBe(mismatch["tests/gold/s1.md"]);
   });
 
   it("compiles the prompt from the spec when a project has no manual system_prompt", () => {
-    const specProject = {
-      "agent.json": JSON.stringify({
-        $schema: "flowstore://spec/agent/v0",
-        id: "agent_spec",
-        name: "spec-agent",
-        meta: { identity: "Asha", purpose: "Remind patients about appointments.", modality: "voice" },
-        chatbot_initiates: true,
-        entry_flow_id: "greet",
-      }),
-      "flows/greet.flow.json": JSON.stringify({
-        $schema: "flowstore://spec/flow/v0",
-        id: "greet",
-        name: "Greet",
-        type: "happy",
-        instructions: "Greet the caller and confirm the appointment.",
-        exit_paths: [{ id: "xp_done", goto: "END", condition: { expression: "true", method: "direct" } }],
-      }),
-    };
+    const specProject = decomposeSpec(specProjectSpec);
     const parsed = parseStudyBundle(specProject);
     expect(parsed.prompt).toContain("Asha");
     expect(parsed.prompt).toContain("Greet the caller and confirm the appointment.");
@@ -283,21 +277,13 @@ describe("buildStudyBundle", () => {
   });
 
   it("derives full dual-party scenarios from golds when a project has no cases", () => {
-    const goldOnly = {
-      "agent.json": JSON.stringify({ system_prompt: "p" }),
-      "tests/gold/g1.gold.json": JSON.stringify({
-        $schema: "flowstore://test/gold/v0",
-        id: "g1",
-        name: "From gold",
-        language: "HI",
-        scenario_id: "sc-1",
-        turns: [
-          { role: "user", text: "namaste" },
-          { role: "agent", text: "hello" },
-          { role: "user", text: "haan" },
-        ],
-      }),
-    };
+    const goldOnly = promptOnly(gold({
+      id: "g1",
+      name: "From gold",
+      language: "HI",
+      scenario_id: "sc-1",
+      turns: [u("namaste"), a("hello"), u("haan")],
+    }));
     const parsed = parseStudyBundle(goldOnly);
     expect(parsed.scenarios).toEqual([
       {
@@ -325,43 +311,18 @@ describe("buildStudyBundle", () => {
 // flows and agent spec intact — with the study's artifacts overlaid.
 describe("buildStudyBundle with sourceFiles", () => {
   const source = {
-    "flowstore.json": JSON.stringify({ $schema: "flowstore://spec/project/v0" }),
-    "agent.json": JSON.stringify({
-      $schema: "flowstore://spec/agent/v0",
-      id: "agent_spec",
-      name: "spec-agent",
-      meta: { identity: "Asha", purpose: "Remind patients about appointments.", modality: "voice" },
-      chatbot_initiates: true,
-      entry_flow_id: "greet",
-    }),
-    "flows/greet.flow.json": JSON.stringify({
-      $schema: "flowstore://spec/flow/v0",
-      id: "greet",
-      name: "Greet",
-      type: "happy",
-      instructions: "Greet the caller and confirm the appointment.",
-      exit_paths: [{ id: "xp_done", goto: "END", condition: { expression: "true", method: "direct" } }],
-    }),
-    "tests/cases/s1.test.json": JSON.stringify({
-      $schema: "flowstore://test/case/v0",
-      id: "s1",
-      name: "Refill request",
-      user_turns: ["hi"],
-      language: "EN",
-      scenario_id: "sc-refill",
-      gold_id: "g-orig",
-      tags: ["from-repo"],
-    }),
+    ...decomposeSpec(specProjectSpec),
+    ...testCase({ id: "s1", name: "Refill request", user_turns: ["hi"], language: "EN", scenario_id: "sc-refill", gold_id: "g-orig", tags: ["from-repo"] }),
   };
 
-  it("keeps flows and agent.json byte-identical when the prompt is unedited", () => {
+  it("keeps flows and agent.md byte-identical when the prompt is unedited", () => {
     const compiled = parseStudyBundle(source).prompt;
     const out = buildStudyBundle({
       agentId: "x", prompt: compiled, models, scenarios, cells, sourceFiles: source,
     });
-    expect(out["agent.json"]).toBe(source["agent.json"]);
-    expect(out["flows/greet.flow.json"]).toBe(source["flows/greet.flow.json"]);
-    expect(out["flowstore.json"]).toBe(source["flowstore.json"]);
+    expect(out["agent.md"]).toBe(source["agent.md"]);
+    expect(out["flows/greet.md"]).toBe(source["flows/greet.md"]);
+    expect(out["flowstore.yaml"]).toBe(source["flowstore.yaml"]);
     const { spec, errors } = loadProject(out);
     expect(errors, JSON.stringify(errors)).toEqual([]);
     expect(spec?.flows).toHaveLength(1);
@@ -372,11 +333,11 @@ describe("buildStudyBundle with sourceFiles", () => {
     const out = buildStudyBundle({
       agentId: "x", prompt: "Edited prompt.", models, scenarios, cells, sourceFiles: source,
     });
-    const agent = JSON.parse(out["agent.json"]);
+    const agent = parseAgent(out["agent.md"]);
     expect(agent.system_prompt).toBe("Edited prompt.");
     expect(agent.entry_flow_id).toBe("greet");
     expect(agent.id).toBe("agent_spec");
-    expect(out["flows/greet.flow.json"]).toBe(source["flows/greet.flow.json"]);
+    expect(out["flows/greet.md"]).toBe(source["flows/greet.md"]);
   });
 
   it("source case files keep extra fields under the study's edits", () => {
@@ -388,8 +349,6 @@ describe("buildStudyBundle with sourceFiles", () => {
     expect(c.tags).toEqual(["from-repo"]);
     // Compare-owned fields win — the study's (possibly edited) turns ship.
     expect(c.user_turns).toEqual(["hi", "refill please"]);
-    // The legacy source file is replaced, not duplicated.
-    expect(out["tests/cases/s1.test.json"]).toBeUndefined();
     // A scenario with no source counterpart still gets a fresh case file.
     expect(caseOf(out, "s2").tags).toEqual(["src:compare"]);
   });

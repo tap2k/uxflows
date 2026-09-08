@@ -5,8 +5,9 @@
 //   flowstore-migrate <project-dir>
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { loadProjectFromPath, readDirectoryToFileMap, writeFileMapToDirectory } from "@flowstore/core/files/node";
+import { readDirectoryToFileMap, writeFileMapToDirectory } from "@flowstore/core/files/node";
 import { decomposeModelsConfig, decomposeSpec, decomposeTestingArtifacts, isLegacyLayout, loadProject } from "@flowstore/core/files";
+import { loadLegacyProject } from "@flowstore/core/files/legacy";
 import type { Spec } from "@flowstore/core/schema/v0";
 
 const dir = resolve(process.argv[2] ?? "");
@@ -16,6 +17,11 @@ if (!process.argv[2] || !existsSync(dir)) {
 }
 
 const before = readDirectoryToFileMap(dir);
+// A markdown spec beside old test files: load the spec through the product
+// loader with the old files masked, and the old tests through the legacy one.
+function withoutStale(files: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(files).filter(([p]) => !LEGACY_TESTS.test(p)));
+}
 const LEGACY_TESTS = /^tests\/(cases|personas|rubrics|gold|decisions)\/.+\.(test|persona|rubric|gold|decision)\.json$|^models\/.+\.json$/;
 const legacySpec = isLegacyLayout(before);
 const legacyTests = Object.keys(before).some((p) => LEGACY_TESTS.test(p));
@@ -23,7 +29,7 @@ if (!legacySpec && !legacyTests) {
   console.log(`${dir}: already in markdown layout`);
   process.exit(0);
 }
-const loaded = loadProjectFromPath(dir);
+const loaded = legacySpec ? loadLegacyProject(before) : loadProject(withoutStale(before));
 if (!loaded.spec) {
   console.error("could not load the legacy project:");
   for (const e of loaded.errors) console.error(`  ${e.path ? e.path + ": " : ""}${e.message}`);
@@ -31,9 +37,10 @@ if (!loaded.spec) {
 }
 for (const e of loaded.errors) console.warn(`warning: ${e.path ? e.path + ": " : ""}${e.message}`);
 
+const legacyArtifacts = legacySpec ? loaded : loadLegacyProject({ ...before, "agent.json": before["agent.json"] ?? "{}" });
 const emitted: Record<string, string> = {
   ...(legacySpec ? decomposeSpec(loaded.spec) : {}),
-  ...(legacyTests ? { ...decomposeTestingArtifacts(loaded.testingArtifacts), ...decomposeModelsConfig(loaded.modelsConfig) } : {}),
+  ...(legacyTests ? { ...decomposeTestingArtifacts(legacyArtifacts.testingArtifacts), ...decomposeModelsConfig(legacyArtifacts.modelsConfig) } : {}),
 };
 writeFileMapToDirectory(emitted, dir);
 
@@ -61,7 +68,7 @@ if (!after.spec) {
 }
 const diff = specDiff(loaded.spec, after.spec);
 const testDiff: Diff[] = [];
-walk("/tests", canonTests(loaded.testingArtifacts), canonTests(after.testingArtifacts), testDiff);
+walk("/tests", canonTests(legacyArtifacts.testingArtifacts), canonTests(after.testingArtifacts), testDiff);
 const realTestDiff = testDiff.filter((d) => !d.whitespaceOnly);
 if (realTestDiff.length > 0) {
   console.error("testing artifacts changed in the round-trip:");

@@ -92,12 +92,16 @@ describe("markdown conventions", () => {
     expect(errors.some((e) => e.path === "flows/flow_claim.md" && /frontmatter/.test(e.message))).toBe(true);
   });
 
-  it("still loads the pre-markdown JSON layout so it can be migrated", () => {
-    const files = { "agent.json": JSON.stringify(loadFixtureSpec("fnol-min.json").agent), ...Object.fromEntries(
-      loadFixtureSpec("fnol-min.json").flows.map((f) => [`flows/${f.id}.flow.json`, JSON.stringify(f)]),
-    ) };
+  it("refuses the pre-markdown JSON layout and names the migrate command", () => {
+    const { spec, errors } = loadProject({ "agent.json": "{}" });
+    expect(spec).toBeNull();
+    expect(errors[0].message).toMatch(/flowstore-migrate/);
+  });
+
+  it("refuses a markdown project with old files beside it, naming them", () => {
+    const files = { ...decomposeSpec(loadFixtureSpec("fnol-min.json")), "flows/stale.flow.json": "{}" };
     const { spec, errors } = loadProject(files);
-    expect(errors).toEqual([]);
-    expect(spec!.flows.length).toBe(loadFixtureSpec("fnol-min.json").flows.length);
+    expect(spec).toBeNull();
+    expect(errors.some((e) => e.path === "flows/stale.flow.json" && /flowstore-migrate/.test(e.message))).toBe(true);
   });
 });

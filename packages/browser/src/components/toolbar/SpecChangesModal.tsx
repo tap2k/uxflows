@@ -53,7 +53,7 @@ export function SpecChangesModal({ onClose }: { onClose: () => void }) {
         if (cancelled) return;
         if (!baseSpec) {
           // No agent.md at root → nothing saved here to diff against.
-          if (files["agent.md"] === undefined && files["agent.json"] === undefined) return setState({ phase: "no-base" });
+          if (files["agent.md"] === undefined) return setState({ phase: "no-base" });
           // The project exists but failed to load — surface the real reason.
           const why = errors[0]?.message ?? "the saved spec could not be parsed";
           return setState({ phase: "error", message: `Could not read the saved spec: ${why}` });

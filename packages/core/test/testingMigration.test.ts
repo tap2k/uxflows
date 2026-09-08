@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { loadTestingArtifacts } from "@flowstore/core/files/testing";
 import type { FileMap, LoadError } from "@flowstore/core/files/types";
 
-// Migration-on-load: legacy "persona owns the world" → "persona = actor with
+// Migration of the pre-markdown JSON test files (flowstore-migrate path): legacy "persona owns the world" → "persona = actor with
 // intrinsic fixture; case carries situational fixture". Behavior-preserving
 // (effective fixture `persona ∪ case` unchanged) and idempotent (re-running on
 // new-model artifacts is a no-op).
@@ -15,7 +15,7 @@ function testCase(id: string, body: Record<string, unknown>): [string, string] {
 }
 function load(files: FileMap) {
   const errors: LoadError[] = [];
-  const artifacts = loadTestingArtifacts(files, errors);
+  const artifacts = loadTestingArtifacts(files, errors, { legacy: true });
   return { artifacts, errors };
 }
 

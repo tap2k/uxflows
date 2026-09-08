@@ -5,11 +5,11 @@ import { validateFile, formatErrors } from "@flowstore/core/validation/ajv";
 import type { FileMap, LoadError } from "./types";
 import { fromYaml, toYaml } from "./markdown";
 
-// Canonical file. Every models/*.yaml (and pre-markdown models/*.json) is
-// read and merged in path order, so a repo may split the catalog from the
+// Canonical file. Every models/*.yaml is read and merged in path order, so a repo may split the catalog from the
 // role defaults; the editor writes the merged config back to this one file.
 const MODELS_FILE = "models/models.yaml";
-const MODELS_RE = /^models\/[^/]+\.(ya?ml|json)$/;
+const MODELS_RE = /^models\/[^/]+\.ya?ml$/;
+const LEGACY_MODELS_RE = /^models\/[^/]+\.json$/;
 
 export interface ResolvedModelsConfig {
   models: Record<string, ModelEntry>;
@@ -161,8 +161,10 @@ export function wireModelId(catalogKey: string, entry: ModelEntry | undefined): 
 export function loadModelsConfig(
   files: FileMap,
   errors: LoadError[],
+  opts: { legacy?: boolean } = {},
 ): ResolvedModelsConfig | null {
-  const paths = Object.keys(files).filter((p) => MODELS_RE.test(p)).sort();
+  const re = opts.legacy ? LEGACY_MODELS_RE : MODELS_RE;
+  const paths = Object.keys(files).filter((p) => re.test(p)).sort();
   if (paths.length === 0) return null;
   const merged: ResolvedModelsConfig = { models: {}, default: null, roles: {}, capabilityEndpoints: {}, agents: {} };
   let any = false;
@@ -240,3 +242,7 @@ export function decomposeModelsConfig(config: ResolvedModelsConfig | null): File
   return { [MODELS_FILE]: toYaml(file) };
 }
 
+
+export function legacyModelsPaths(files: FileMap): string[] {
+  return Object.keys(files).filter((p) => LEGACY_MODELS_RE.test(p));
+}

@@ -5,7 +5,8 @@
 //   verify-migration <project-dir> [<git-rev>]
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
-import { loadProject } from "@flowstore/core/files";
+import { isLegacyLayout, loadProject } from "@flowstore/core/files";
+import { loadLegacyProject } from "@flowstore/core/files/legacy";
 import { readDirectoryToFileMap } from "@flowstore/core/files/node";
 import type { FileMap } from "@flowstore/core/files";
 
@@ -15,7 +16,7 @@ const git = (...args: string[]) => execFileSync("git", ["-C", dir, ...args], { e
 const paths = git("ls-tree", "-r", "--name-only", rev).split("\n").filter((p) => p && /\.(json|csv|md|ya?ml)$/.test(p) && !p.startsWith("tests/runs/"));
 const before: FileMap = {};
 for (const p of paths) before[p] = git("show", `${rev}:${p}`);
-const a = loadProject(before);
+const a = isLegacyLayout(before) ? loadLegacyProject(before) : loadProject(before);
 const b = loadProject(readDirectoryToFileMap(dir));
 const errs = (r: typeof a) => r.errors.filter((e) => !/^warning:/.test(e.message)).map((e) => `${e.path ?? ""}: ${e.message}`);
 if (!a.spec || !b.spec) { console.error("load failed", errs(a), errs(b)); process.exit(1); }

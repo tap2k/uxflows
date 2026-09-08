@@ -44,13 +44,10 @@ function effectivePromptOf(files: Record<string, string>): string {
   return prompt;
 }
 
-// The agent envelope of a FileMap, whichever layout it carries: agent.md
-// (markdown source) or the pre-markdown agent.json. Undefined when absent or
-// unparseable.
+// The agent envelope of a FileMap. Undefined when absent or unparseable.
 function readAgent(files: Record<string, string>): Partial<Agent> | undefined {
   try {
     if (files["agent.md"]) return parseAgent(files["agent.md"]);
-    if (files["agent.json"]) return JSON.parse(files["agent.json"]) as Partial<Agent>;
   } catch {
     // Malformed — treat as spec'd and let the compiler answer.
   }
@@ -61,12 +58,7 @@ function readAgent(files: Record<string, string>): Partial<Agent> | undefined {
 function readVariables(files: Record<string, string>): Record<string, unknown> {
   try {
     if (files["variables.yaml"]) return (fromYaml<Record<string, unknown>>(files["variables.yaml"], "variables.yaml") ?? {});
-    if (files["variables.json"]) {
-      const v = JSON.parse(files["variables.json"]) as { variables?: Record<string, unknown> };
-      return v.variables ?? {};
-    }
-    const inline = (readAgent(files) as { variables?: Record<string, unknown> } | undefined)?.variables;
-    return inline ?? {};
+    return {};
   } catch {
     return {};
   }
@@ -113,18 +105,11 @@ export function buildStudyBundle(args: {
   const files: Record<string, string> = src ? { ...src } : {};
   const j = (v: unknown) => JSON.stringify(v, null, 2) + "\n";
 
-  if (!files["flowstore.yaml"] && !files["flowstore.json"]) {
-    files["flowstore.yaml"] = toYaml(PROJECT_MANIFEST);
-  }
+  if (!files["flowstore.yaml"]) files["flowstore.yaml"] = toYaml(PROJECT_MANIFEST);
   const srcAgent = src ? (readAgent(src) as Record<string, unknown> | undefined) : undefined;
-  // A source project still in the pre-markdown layout keeps agent.json: its
-  // flows are *.flow.json, and an agent.md beside them would switch the loader
-  // to the markdown layout and lose them. Run flowstore-migrate on the repo.
-  const agentPath = src?.["agent.json"] && !src?.["agent.md"] ? "agent.json" : "agent.md";
-  const writeAgent = (agent: Record<string, unknown>) =>
-    agentPath === "agent.md" ? emitAgent(agent as unknown as Agent) : j(agent);
+  const writeAgent = (agent: Record<string, unknown>) => emitAgent(agent as unknown as Agent);
   if (!srcAgent) {
-    files[agentPath] = writeAgent({
+    files["agent.md"] = writeAgent({
       $schema: "flowstore://spec/agent/v0",
       id: args.agentId,
       name: "Imported agent (compare study)",
@@ -155,12 +140,10 @@ export function buildStudyBundle(args: {
     // leaves agent.md byte-identical so the editor keeps compiling from
     // the spec. New fill vars get declared on top of existing declarations.
     const promptEdited = prompt !== effectivePromptOf(src ?? {});
-    if (promptEdited) files[agentPath] = writeAgent({ ...srcAgent, system_prompt: prompt });
+    if (promptEdited) files["agent.md"] = writeAgent({ ...srcAgent, system_prompt: prompt });
     if (hasVars) {
       // New fill vars get declared on top of the project's existing declarations.
-      const declared = readVariables(src ?? {});
-      files["variables.yaml"] = toYaml(declareVars(vars, declared));
-      delete files["variables.json"];
+      files["variables.yaml"] = toYaml(declareVars(vars, readVariables(src ?? {})));
     }
   }
 
@@ -184,7 +167,6 @@ export function buildStudyBundle(args: {
       language: s.language,
       ...(hasVars ? { vars } : {}),
     } as TestCase);
-    delete files[`tests/cases/${s.id}.test.json`];
   }
 
   const resultFiles: string[] = [];
@@ -239,7 +221,7 @@ export function buildStudyBundle(args: {
   for (const s of scenarios) {
     const ref = goldOf(s);
     if (ref.length === 0) continue;
-    const goldId = s.goldPath ? s.goldPath.replace(/^tests\/gold\//, "").replace(/\.(md|gold\.json)$/, "") : s.id;
+    const goldId = s.goldPath ? s.goldPath.replace(/^tests\/gold\//, "").replace(/\.md$/, "") : s.id;
     const orig = origGold(goldId);
     const untouched = orig !== undefined && JSON.stringify(orig.turns) === JSON.stringify(s.turns);
     const { blessed_at: origBlessed, ...origRest } = orig ?? ({} as Partial<Gold>);
@@ -255,7 +237,6 @@ export function buildStudyBundle(args: {
       language: s.language,
       scenario_id: s.scenarioId,
     } as Gold);
-    delete files[`tests/gold/${goldId}.gold.json`];
   }
 
   return files;

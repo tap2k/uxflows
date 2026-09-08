@@ -14,9 +14,9 @@ import { loadTestingArtifacts } from "./testing";
 import { loadComments } from "./comments";
 import type { FileMap, LoadError, LoadResult } from "./types";
 
-// The pre-markdown JSON layout (agent.json + *.flow.json + *.scripts.csv).
-// Read-only: loadProject routes here when a project still carries it, so the
-// migrate CLI can convert it. Nothing writes this layout any more.
+// The pre-markdown JSON layout (agent.json + *.flow.json + *.scripts.csv, the
+// JSON test files, models/*.json). Read only by flowstore-migrate to convert a
+// project; the product's loader refuses this layout and names the command.
 
 const FLOW_FILE_RE = /^flows\/(.+)\.flow\.json$/;
 const FLOW_SCRIPTS_RE = /^flows\/(.+)\.scripts\.csv$/;
@@ -43,8 +43,8 @@ export function loadLegacyProject(files: FileMap): LoadResult {
 
   // The legacy manifest (flowstore.json, project/v0) is not validated: this
   // layout is read only to be migrated.
-  const modelsConfig = loadModelsConfig(files, errors);
-  const testingArtifacts = loadTestingArtifacts(files, errors);
+  const modelsConfig = loadModelsConfig(files, errors, { legacy: true });
+  const testingArtifacts = loadTestingArtifacts(files, errors, { legacy: true });
   const comments = loadComments(files, errors);
 
   const agentRaw = files["agent.json"];
@@ -311,4 +311,16 @@ function validateFileInto(
   for (const msg of formatErrors(result.errors)) {
     errors.push({ path, message: msg });
   }
+}
+
+// Every file of the pre-markdown layout present in a FileMap.
+export function legacySpecPaths(files: FileMap): string[] {
+  const res = [
+    /^agent\.json$/, /^flowstore\.json$/, /^guardrails\.json$/, /^guardrails\/.+\.json$/,
+    /^business-goals\.json$/, /^business-goals\/.+\.json$/, /^variables\.json$/, /^variables\/.+\.json$/,
+    /^capabilities\/.+\.capability\.json$/, /^knowledge\/faq\.json$/, /^knowledge\/faq\/.+\.json$/,
+    /^knowledge\/glossary\.json$/, /^knowledge\/tables\/.+\.(meta\.json|csv)$/,
+    /^flows\/.+\.flow\.json$/, /^flows\/.+\.scripts\.csv$/,
+  ];
+  return Object.keys(files).filter((p) => res.some((re) => re.test(p)));
 }

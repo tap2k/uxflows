@@ -79,7 +79,7 @@ export function filledPromptOf(prompt: string, vars: Record<string, string>): st
 
 interface CompareState {
   // Stable per-study agent id (see studyStorage) — minted here, re-minted on
-  // clear, adopted from agent.json on bundle open.
+  // clear, adopted from agent.md on bundle open.
   agentId: string;
   prompt: string;
   scenarios: Scenario[];

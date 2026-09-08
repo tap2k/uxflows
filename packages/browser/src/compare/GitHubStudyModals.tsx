@@ -52,7 +52,7 @@ export function GitHubStudyOpenModal({
     setError(null);
     try {
       const { files } = await readRepoToFileMap({ client: readClient, owner, repo, ref });
-      if (!files["agent.md"] && !files["agent.json"]) {
+      if (!files["agent.md"]) {
         setError("No flowstore project found in this repo (missing agent.md).");
         return;
       }
