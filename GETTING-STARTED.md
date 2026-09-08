@@ -85,7 +85,7 @@ The Import path is the *declarative* one: it also accepts hand-written JSON or Y
 For returning to work that already lives in Git or on disk. A brand-new user won't have one yet.
 
 - **From GitHub** — click the GitHub-open (cloud) icon. Add a GitHub PAT in Settings first; then pick a repo and branch. If the branch has no flowstore project yet, the editor offers to initialize a starter one.
-- **From a file or folder** — use the **Import** modal's drop zone to drop a `.json`/`.yaml`/`.zip`, or a decomposed project folder.
+- **From a file or folder** — use the **Import** modal's drop zone to drop a `.json`/`.yaml`/`.zip`, or a project folder in the markdown layout.
 
 ## Simulate it
 
@@ -99,13 +99,13 @@ Open the **Export** dropdown:
 
 - **Copy System Prompt** — the compiled prompt on your clipboard, ready to paste into Claude, OpenAI, Voiceflow, or any LLM that takes a system prompt plus tool calls. This is the lowest-friction way to ship.
 - **Export JSON** — the full spec as one file. It round-trips: this is exactly what the declarative Import accepts.
-- **Export ZIP (decomposed)** — the spec split into the per-concern on-disk file layout. This is the bridge into the Git-backed project and testing world.
+- **Export ZIP** — the spec as the markdown file layout. This is the bridge into the Git-backed project and testing world.
 
 ## What's next
 
 You've done author → simulate → export. From here:
 
-- [`flowstore-example-fnol`](https://github.com/tap2k/flowstore-example-fnol) — the full worked example: a decomposed multi-flow agent with the complete testing harness (gold transcripts, cases, mocks, rubrics, personas).
-- [FILE-MODEL.md](./FILE-MODEL.md) — how a project decomposes into files on disk, single- and multi-agent.
+- [`flowstore-example-fnol`](https://github.com/tap2k/flowstore-example-fnol) — the full worked example: a multi-flow agent with the complete testing harness (gold transcripts, cases, mocks, rubrics, personas).
+- [FILE-MODEL.md](./FILE-MODEL.md) — the markdown source layout, single- and multi-agent.
 - [SCHEMA.md](./SCHEMA.md) — the authoritative spec data model.
 - [AGENTS.md](./AGENTS.md) — architecture, principles, and where flowstore sits in the broader product.

@@ -1,6 +1,6 @@
 # flowstore
 
-The browser editor in **flowstore — a Behavioral IDE for Conversational Agents**. Authors conversation specs on a canvas, decomposes them into per-concern files in a Git repo, and compiles a system prompt as a pure function of the spec. Specs conform to [SCHEMA.md](./SCHEMA.md); the on-disk layout is in [FILE-MODEL.md](./FILE-MODEL.md).
+The browser editor in **flowstore — a Behavioral IDE for Conversational Agents**. Authors conversation specs on a canvas, saves them as markdown files in a Git repo, and compiles a system prompt as a pure function of the spec. Specs conform to [SCHEMA.md](./SCHEMA.md); the on-disk layout is in [FILE-MODEL.md](./FILE-MODEL.md).
 
 **Try it:** the hosted editor at [flowstore.org/create](https://flowstore.org/create) — nothing to install, runs in your browser.
 
@@ -36,7 +36,7 @@ npm workspaces monorepo (`packages/*`):
 The same codegen the editor uses is exposed as a CLI in `@flowstore/core`, for compiling a spec outside the browser (CI, test harnesses, scripting):
 
 ```bash
-# System prompt + tool schemas (JSON), from a single-file spec or a decomposed project dir:
+# System prompt + tool schemas (JSON), from a project dir (markdown layout) or a .flowstore.json bundle:
 npm -w @flowstore/core run --silent flowstore-compile -- examples/coffee/coffee.json --format prompt
 
 # Resolved spec (single runtime-canonical JSON doc):
@@ -49,11 +49,11 @@ Flags: `--format prompt|spec` (required), `--language <code>` (defaults to the f
 
 - [GETTING-STARTED.md](./GETTING-STARTED.md) — first pass through the core loop: author a spec, simulate it, export a system prompt.
 - [SCHEMA.md](./SCHEMA.md) — authoritative spec data model.
-- [FILE-MODEL.md](./FILE-MODEL.md) — how a flowstore project decomposes into files on disk.
+- [FILE-MODEL.md](./FILE-MODEL.md) — the markdown source layout a project is written in.
 - [docs/testing-from-scripts.md](./docs/testing-from-scripts.md) — the bring-your-own-runner testing path: the compile contract, test-file shapes, and what a runner must do.
 - [docs/test-driven-prompts.md](./docs/test-driven-prompts.md) — the methodology: authoring agent prompts test-first (golds, assertions, A/B, when to fix the spec vs the generator).
 - [AGENTS.md](./AGENTS.md) — architecture, tech stack, design principles.
-- [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) — LLM prompt that parses source material into spec JSON.
+- [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) — LLM prompt that parses source material into a resolved spec.
 
 ## Examples
 

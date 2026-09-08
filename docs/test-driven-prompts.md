@@ -75,7 +75,7 @@ You can hand-author the case from the gold, or derive it mechanically: bundle ea
 The runner compiles for you, but to inspect what the model actually sees, compile by hand (see [testing-from-scripts.md § Compiling](./testing-from-scripts.md#compiling-the-spec)). This is the layer you'll iterate on most once cases exist. Three things you can change, in order of cost:
 
 - **Persona world** (cheap) — edit the bound persona's `vars` / `mocks`. "What does the open look like if the customer is already identified?" or "what happens when `place_order` errors?"
-- **Spec content** (medium) — edit `flows/*.flow.json`, the per-flow `*.scripts.csv`, `knowledge/`, or guardrails. Each change recompiles instantly; re-run the suite to see effect.
+- **Spec content** (medium) — edit `flows/*.md`, `knowledge/`, or guardrails. Each change recompiles instantly; re-run the suite to see effect.
 - **Prompt generator** (high) — change the flowstore compiler itself. Affects *every* spec. Reserve for class-of-problem fixes, not one-off tweaks.
 
 ### Phase 4 — run the harness

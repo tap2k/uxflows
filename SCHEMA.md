@@ -132,7 +132,7 @@ Python-like syntax is deliberate. CEL (Common Expression Language) and JsonLogic
 
 ## Spec Serialization
 
-This document defines the data model. The on-disk serialization — how the agent envelope, flows, knowledge tables, capabilities, mocks, test cases, and the rest decompose into files in a user's repo — is defined in [FILE-MODEL.md](./FILE-MODEL.md).
+This document defines the data model. The source a project is written in is markdown with YAML frontmatter, one file per flow and per collection, defined in [FILE-MODEL.md](./FILE-MODEL.md). The JSON below is the resolved form that source parses into.
 
 In memory and as a runtime artifact, a resolved spec has the shape:
 
@@ -147,7 +147,7 @@ In memory and as a runtime artifact, a resolved spec has the shape:
 
 The agent envelope appears once at the `agent` key; all flows live in the `flows` array. The agent's `entry_flow_id` must reference one of the flows in that array. Any flow id referenced by an exit path's `goto` must exist in `flows` (unless `goto` is the reserved keyword `END` or `RETURN`).
 
-This resolved form is what a runtime consumes and what the simulate panel hands to a paired runtime. It is produced by `flowstore-compile --format spec --agent <id>` from the decomposed source files; users do not hand-edit it. A second compile target, `flowstore-compile --format prompt --agent <id>`, produces a monolithic system prompt + tool schemas from the same sources for the testing path.
+This resolved form is what a runtime consumes and what the simulate panel hands to a paired runtime. It is produced by `flowstore-compile --format spec --agent <id>` from the markdown source files; nobody hand-edits it. A second compile target, `flowstore-compile --format prompt --agent <id>`, produces a monolithic system prompt + tool schemas from the same sources for the testing path.
 
 In multi-agent projects, the compiler merges across scope levels (project ∪ agent ∪ flow) per the rules in [FILE-MODEL.md § Scope levels](./FILE-MODEL.md#scope-levels-project--agent--flow). Each agent compiles to its own resolved spec independently; cross-agent references are not allowed.
 

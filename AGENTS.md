@@ -4,7 +4,7 @@ Do not write to the agent memory system for this project. If prior memories exis
 
 # flowstore
 
-Visual editor for flowstore behavioral specs. A Vite-built React SPA that authors, simulates, and exports spec JSON conforming to [SCHEMA.md](./SCHEMA.md).
+Visual editor for flowstore behavioral specs. A Vite-built React SPA that authors, simulates, and exports specs conforming to [SCHEMA.md](./SCHEMA.md), read from and written to the markdown source layout in [FILE-MODEL.md](./FILE-MODEL.md).
 
 ## Forward direction
 
@@ -17,7 +17,7 @@ The Phase 0 MVP (canvas-first single-file spec editor) shipped 2026-05-08. The o
 flowstore is the **authoring** surface of the broader flowstore product (browser editor for specs across one or many agents per project). **Testing** happens via Python scripts vendored into each agent's Git repo by `flowstore-init-project` — tooling that compiles the spec to a system prompt + tool schemas and drives an LLM through test cases. Sibling repos:
 
 - `flowstore/` (this repo) — visual editor + `@flowstore/core` libraries (files, schema, codegen, providers).
-- **Per-agent or multi-agent Git repos** (customer-owned, flowstore-scaffolded) — hold the decomposed spec(s) under `agents/<id>/` (multi-agent) or at root (single-agent), shared resources at root (capabilities, project-level guardrails, knowledge, personas, evaluators, rubrics), testing artifacts, run history, comments, and Python scripts.
+- **Per-agent or multi-agent Git repos** (customer-owned, flowstore-scaffolded) — hold the markdown spec(s) under `agents/<id>/` (multi-agent) or at root (single-agent), shared resources at root (capabilities, project-level guardrails, knowledge, personas, evaluators, rubrics), testing artifacts, run history, comments, and Python scripts.
 
 Production monitoring (real-time event stream consumption, dashboards, alerting) is **explicitly out of scope** for flowstore — the runtime emits events; eval/observability tools consume them.
 
@@ -37,8 +37,8 @@ Narrative sharing with stakeholders is expected to happen *outside* the app for 
 
 The canvas is the canonical editing surface. Text views are entry and export only — never a live mirror of the spec. Re-importing replaces the current spec; we do not merge text edits back into a live graph. The round-trip fragility that forces tools like Stately into heavy AST machinery is avoided by keeping the canvas canonical.
 
-- **Canvas + inspectors + sheets** — the only place users edit graph structure. Round-trips with the JSON store.
-- **Declarative text import** — paste structured input (JSON or YAML matching the schema). Mechanical parse, no LLM. Used both by humans hand-authoring and as the entry point for upstream parsers' output. [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) produces v0 JSON the user pastes here.
+- **Canvas + inspectors + sheets** — the only place users edit graph structure. Round-trips with the in-memory spec, which saves as markdown files.
+- **Declarative text import** — paste a resolved spec (JSON or YAML matching the schema), or import a project folder or zip in the markdown layout. Mechanical parse, no LLM. [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) produces the resolved JSON the user pastes here.
 - **Imperative text import** — paste free-form source: an analyst's script, a process doc, a system prompt, supporting docs. An LLM converts it directly to v0 JSON in one shot, schema-constrained.
 - **Export as JSON** — the exported file is the same shape the declarative import accepts; round-trip preserves the spec.
 - **Export as system prompt** — deterministic codegen ([packages/core/src/codegen/promptGenerator.ts](./packages/core/src/codegen/promptGenerator.ts)) that flattens the spec into a single monolithic system prompt. For copy-paste into runtimes that take a system prompt (OpenAI, Claude, Voiceflow, etc.); a graph-native runtime consumes the JSON directly.
@@ -79,6 +79,7 @@ npm workspaces monorepo. `@flowstore/core` is pure TS (files, schema, codegen, p
   /src/
     index.ts                        re-exports schema/v0 + schema/flowJunction
     ids.ts                          stable-id generation
+    /files/                         markdown source layout: load.ts (parse), decompose.ts (emit), markdown.ts (conventions), legacy.ts (old JSON layout, read-only)
     /schema/                        TypeBox schema (mirrors SCHEMA.md)
     /codegen/                       export targets (system prompt today; later Pipecat, LiveKit, etc.)
     /validation/                    Ajv validators + graph rules
@@ -184,8 +185,8 @@ The end-to-end loop flowstore supports:
 
 - [GETTING-STARTED.md](./GETTING-STARTED.md) — first pass through the core loop: author a spec, simulate it, export a system prompt.
 - [SCHEMA.md](./SCHEMA.md) — authoritative spec data model.
-- [FILE-MODEL.md](./FILE-MODEL.md) — how a flowstore project decomposes into files on disk; the serialization contract for SCHEMA.md.
-- [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) — LLM prompt for converting source material into spec JSON (any frontier LLM).
+- [FILE-MODEL.md](./FILE-MODEL.md) — the markdown source layout a project is written in; the serialization contract for SCHEMA.md.
+- [AGENT-SPEC-PROMPT.txt](./AGENT-SPEC-PROMPT.txt) — LLM prompt for converting source material into a resolved spec (any frontier LLM); import it and save to get the markdown layout.
 
 ## Running
 
