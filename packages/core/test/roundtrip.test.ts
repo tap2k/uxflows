@@ -105,3 +105,14 @@ describe("markdown conventions", () => {
     expect(errors.some((e) => e.path === "flows/stale.flow.json" && /flowstore-migrate/.test(e.message))).toBe(true);
   });
 });
+
+describe("gold transcript grammar", () => {
+  it("reads compare's textarea form (lowercase markers, unindented continuations)", async () => {
+    const { parseTranscript } = await import("@flowstore/core/files/testing");
+    expect(parseTranscript("user: hi\nagent: hello\nthere\nUser:bye", "g")).toEqual([
+      { role: "user", text: "hi" },
+      { role: "agent", text: "hello\nthere" },
+      { role: "user", text: "bye" },
+    ]);
+  });
+});

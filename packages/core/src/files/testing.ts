@@ -205,14 +205,18 @@ function parseGold(id: string, text: string, path: string): Gold {
   return g as unknown as Gold;
 }
 
-const TURN_RE = /^(Agent|User): ?(.*)$/;
+// Same line grammar as compare's scenario textarea (turnText.ts): a role
+// marker starts a turn, case-insensitive, space optional; any other
+// non-blank line continues the current turn. The emitter indents
+// continuations two spaces; the parser strips that indent if present.
+const TURN_RE = /^(agent|user):\s?(.*)$/i;
 
 export function parseTranscript(body: string, path: string): GoldTurn[] {
   const turns: GoldTurn[] = [];
   for (const line of body.split(/\r?\n/)) {
     const m = TURN_RE.exec(line);
-    if (m) turns.push({ role: m[1] === "Agent" ? "agent" : "user", text: m[2] });
-    else if (/^  /.test(line) && turns.length > 0) turns[turns.length - 1].text += "\n" + line.slice(2);
+    if (m) turns.push({ role: m[1].toLowerCase() === "agent" ? "agent" : "user", text: m[2] });
+    else if (turns.length > 0 && line.trim() !== "") turns[turns.length - 1].text += "\n" + line.replace(/^  /, "");
     else if (line.trim() !== "") throw new Error(`${path}: expected "Agent:" / "User:" lines; found: ${line.slice(0, 60)}`);
   }
   return turns;
