@@ -41,9 +41,12 @@ npm -w @flowstore/core run --silent flowstore-compile -- examples/coffee/coffee.
 
 # Resolved spec (single runtime-canonical JSON doc):
 npm -w @flowstore/core run --silent flowstore-compile -- examples/coffee/coffee.json --format spec
+
+# Testing artifacts + model roles as one JSON doc, for harnesses:
+npm -w @flowstore/core run --silent flowstore-compile -- <project-dir> --format tests
 ```
 
-Flags: `--format prompt|spec` (required), `--language <code>` (defaults to the first declared language — pass it for any other), `--vars-file <path.json>` / `--vars k=v` (substitute `{placeholder}` pre-context), `--out <path>`. A separate project repo points at a flowstore checkout via a `FLOWSTORE_COMPILE_CMD` env override (see the testing docs below); when flowstore ships a published CLI this collapses to `flowstore-compile`.
+Flags: `--format prompt|spec|tests` (required), `--language <code>` (defaults to the first declared language — pass it for any other), `--vars-file <path.json>` / `--vars k=v` (substitute `{placeholder}` pre-context), `--out <path>`. A separate project repo points at a flowstore checkout via a `FLOWSTORE_COMPILE_CMD` env override (see the testing docs below); when flowstore ships a published CLI this collapses to `flowstore-compile`.
 
 ## Docs
 

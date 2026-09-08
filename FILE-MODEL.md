@@ -24,9 +24,9 @@ project/
 │   ├── glossary.md              "### id: term" then the definition
 │   └── tables/<id>.md           frontmatter = name, notes, structure, scaling_rule; body = pipe table
 ├── flows/<id>.md                one flow per file (below)
-├── models/*.json                model catalog and roles; machine-only, read by harnesses
+├── models/models.yaml           model catalog and roles
 ├── comments/<uuid>.comment.json anchored review threads; editor-written
-└── tests/                       cases, personas, rubrics, golds, decisions, evaluators, runs
+└── tests/                       cases, personas, rubrics, golds (markdown); decisions (YAML); evaluators; runs
 ```
 
 Every collection accepts a file form or a directory form. `guardrails.md` and `guardrails/<concern>.md` are the same collection; so are `knowledge/faq.md` and `knowledge/faq/<topic>.md`, and `variables.yaml` and `variables/<domain>.yaml`. Entries concatenate in path order; a duplicate id is an error.
@@ -116,15 +116,33 @@ Scripts live in the flow files. A translator gets a spreadsheet through the edit
 
 ## Testing artifacts
 
-`tests/cases/<id>.test.json`, `tests/personas/<id>.persona.json`, `tests/rubrics/<id>.rubric.json`, `tests/gold/<id>.gold.json`, and `tests/decisions/<id>.decision.json` are JSON, per the schemas under `packages/core/src/schema/files/`. `tests/evaluators/*.py` are Python. `tests/runs/<timestamp>-<label>/` holds a manifest and one `*.result.json` per case, gitignored.
+Prose-bearing artifacts are markdown with frontmatter; the body holds the artifact's own prose.
+
+| File | Frontmatter | Body |
+|---|---|---|
+| `tests/cases/<id>.md` | everything typed: vars, mocks, assertions, evaluators, persona_id, language, tags | notes as the preamble; `## Turns` with one `- user turn` per line, `- [barge-in] text` for an interruption; `## Actor` for an inline user-sim prompt |
+| `tests/personas/<id>.md` | vars, mocks, traits, model, tags | the system prompt as the preamble; `## Notes` |
+| `tests/rubrics/<id>.md` | scale, model | the criteria as the preamble; `## Prompt template` |
+| `tests/gold/<id>.md` | vars, mocks, language, blessed_at, tags, source_pointer | notes as the preamble; `## Transcript` of `Agent:` / `User:` lines, a continuation line indented two spaces |
+| `tests/decisions/<id>.yaml` | the whole routing matrix | none |
+
+`tests/evaluators/*.py` are Python. `tests/runs/<timestamp>-<label>/` holds a manifest and one `*.result.json` per case, gitignored.
+
+## Models
+
+`models/models.yaml` holds the model catalog and the roles (`default`, `roles.judge`, `roles.user_simulation`, ...). The loader merges every `models/*.yaml` in path order, so a repo may split the catalog from the defaults; the editor writes the merged config back to `models.yaml`.
 
 ## Compiled artifact
 
-`flowstore-compile --format spec <dir>` emits the resolved JSON spec; `--format prompt` emits `{ system_prompt, tool_schemas }`. Harnesses read the resolved spec for anything about the agent (languages, variables, capabilities) rather than parsing source files. Compiled output goes to `dist/`, gitignored.
+`flowstore-compile --format spec <dir>` emits the resolved JSON spec; `--format prompt` emits `{ system_prompt, tool_schemas }`; `--format tests` emits `{ cases, personas, rubrics, golds, decisions, models }`. A harness reads those and never parses source files. Compiled output goes to `dist/`, gitignored.
 
 ## Migration
 
-`flowstore-migrate <dir>` converts a project that still carries the pre-markdown JSON layout (`agent.json`, `*.flow.json`, `*.scripts.csv`) in place, then reloads the result and reports any entity that differs from the original. The loader also reads that old layout, so an unconverted repo still opens; nothing writes it any more.
+`flowstore-migrate <dir>` converts a project that still carries the pre-markdown JSON layout (`agent.json`, `*.flow.json`, `*.scripts.csv`, `*.test.json` and the other test files, `models/*.json`) in place, then reloads the result and reports any entity that differs from the original. The loader also reads that old layout, so an unconverted repo still opens; nothing writes it any more.
+
+## The spec prompt
+
+`AGENT-SPEC-PROMPT.txt` asks an LLM to emit a project as one text document of files, each introduced by a `--- file: <path> ---` line. The editor's build-from-source and its import paste both accept that document; `parseFileBundleText` in core turns it into files and `loadProject` validates them.
 
 ## Non-loaded files
 

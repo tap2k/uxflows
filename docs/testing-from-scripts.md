@@ -77,6 +77,7 @@ $FLOWSTORE_COMPILE_CMD "$PWD" --format prompt
 | Flag | Notes |
 |---|---|
 | `--format prompt` | Emits `{system_prompt: string, tool_schemas: [...]}`. |
+| `--format tests` | Emits `{cases, personas, rubrics, golds, decisions, models}` — every testing artifact already parsed, plus the model roles. A harness reads this and never parses test files. |
 | `--format spec` | Emits the resolved `{agent, flows, ...}` JSON. Same shape a native runner consumes; hand it to spec-aware evaluators. |
 | `--language <code>` | Picks the language column of the scripts. Defaults to the first declared language — pass it explicitly for any non-default language, or assertions silently run against the wrong prompt. |
 | `--vars-file <path.json>` | Substitutes `{k}` placeholders in the compiled prompt from a JSON key/value file. This is how a runner seeds **pre-context** — typically derived from the bound persona's `vars`. |
