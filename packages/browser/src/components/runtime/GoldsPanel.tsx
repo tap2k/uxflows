@@ -15,7 +15,7 @@ import { DisclosureCaret } from "@/components/ui";
 
 // Saved-gold library for the Run pill's Golds tab. Same vertical
 // list-with-inline-expand pattern as Personas. Golds are file-backed
-// (tests/gold/<id>.gold.json) — save / delete mark the project dirty
+// (tests/gold/<id>.md) — save / delete mark the project dirty
 // and ride on the next GitHub Save. New golds usually originate from
 // Simulate capture (capture ▾ → as gold), but `+ New` here creates a
 // placeholder if a designer wants to author one from scratch.

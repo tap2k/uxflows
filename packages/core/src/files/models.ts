@@ -3,8 +3,13 @@ import { ModelsFileSchema } from "@flowstore/core/schema/files/models";
 export type { CapabilityEndpoint, ModelEntry, AgentEndpoint } from "@flowstore/core/schema/files/models";
 import { validateFile, formatErrors } from "@flowstore/core/validation/ajv";
 import type { FileMap, LoadError } from "./types";
+import { fromYaml, toYaml } from "./markdown";
 
-const MODELS_FILE = "models/endpoints.json";
+// Canonical file. Every models/*.yaml (and pre-markdown models/*.json) is
+// read and merged in path order, so a repo may split the catalog from the
+// role defaults; the editor writes the merged config back to this one file.
+const MODELS_FILE = "models/models.yaml";
+const MODELS_RE = /^models\/[^/]+\.(ya?ml|json)$/;
 
 export interface ResolvedModelsConfig {
   models: Record<string, ModelEntry>;
@@ -157,31 +162,32 @@ export function loadModelsConfig(
   files: FileMap,
   errors: LoadError[],
 ): ResolvedModelsConfig | null {
-  const content = files[MODELS_FILE];
-  if (!content) return null;
-
-  let parsed: ModelsFile | null = null;
-  try {
-    parsed = JSON.parse(content) as ModelsFile;
-  } catch (e) {
-    errors.push({
-      path: MODELS_FILE,
-      message: e instanceof Error ? e.message : "could not parse models/endpoints.json",
-    });
-    return null;
+  const paths = Object.keys(files).filter((p) => MODELS_RE.test(p)).sort();
+  if (paths.length === 0) return null;
+  const merged: ResolvedModelsConfig = { models: {}, default: null, roles: {}, capabilityEndpoints: {}, agents: {} };
+  let any = false;
+  for (const path of paths) {
+    let parsed: ModelsFile | null;
+    try {
+      parsed = path.endsWith(".json") ? (JSON.parse(files[path]) as ModelsFile) : fromYaml<ModelsFile>(files[path], path);
+    } catch (e) {
+      errors.push({ path, message: e instanceof Error ? e.message : `could not parse ${path}` });
+      continue;
+    }
+    if (!parsed) continue;
+    const check = validateFile(ModelsFileSchema, { ...parsed, $schema: "flowstore://spec/models/v0" });
+    if (!check.valid) {
+      for (const msg of formatErrors(check.errors)) errors.push({ path, message: msg });
+      continue;
+    }
+    any = true;
+    Object.assign(merged.models, parsed.models ?? {});
+    if (parsed.default) merged.default = parsed.default;
+    Object.assign(merged.roles, parsed.roles ?? {});
+    Object.assign(merged.capabilityEndpoints, parsed.capabilities ?? {});
+    Object.assign(merged.agents, parsed.agents ?? {});
   }
-  const check = validateFile(ModelsFileSchema, parsed);
-  if (!check.valid) {
-    for (const msg of formatErrors(check.errors)) errors.push({ path: MODELS_FILE, message: msg });
-    return null;
-  }
-  return {
-    models: parsed.models ?? {},
-    default: parsed.default ?? null,
-    roles: parsed.roles ?? {},
-    capabilityEndpoints: parsed.capabilities ?? {},
-    agents: parsed.agents ?? {},
-  };
+  return any ? merged : null;
 }
 
 // Drops named keys from an object — used to strip the credential-bearing
@@ -192,7 +198,7 @@ function omit<T extends object>(obj: T, ...keys: string[]): T {
   return out as T;
 }
 
-// Serializes the models config back to models/endpoints.json. Every
+// Serializes the models config back to models/models.yaml. Every
 // credential-bearing field is stripped first — project files are committed to
 // GitHub and must never carry secrets (SCHEMA.md "Execution Separate From
 // Spec"). Three channels carry them, one per config shape:
@@ -224,14 +230,13 @@ export function decomposeModelsConfig(config: ResolvedModelsConfig | null): File
     Object.entries(config.agents).map(([n, e]) => [n, omit(e, "turn_headers")]),
   );
 
-  const file: ModelsFile = {
-    $schema: "flowstore://spec/models/v0",
+  const file: Omit<ModelsFile, "$schema"> = {
     ...(Object.keys(models).length ? { models } : {}),
     ...(config.default ? { default: config.default } : {}),
     ...(Object.keys(config.roles).length ? { roles: config.roles } : {}),
     ...(hasCaps ? { capabilities } : {}),
     ...(hasAgents ? { agents } : {}),
   };
-  return { [MODELS_FILE]: JSON.stringify(file, null, 2) };
+  return { [MODELS_FILE]: toYaml(file) };
 }
 

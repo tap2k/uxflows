@@ -19,7 +19,7 @@ import { DisclosureCaret } from "@/components/ui";
 // the complete, standalone-runnable fixture (vars + mocks — character facts
 // plus a baseline situation, so the persona runs with no case; a case
 // overrides specific keys per scenario). Personas are file-backed
-// (tests/personas/<id>.persona.json); save / delete mark the project dirty
+// (tests/personas/<id>.md); save / delete mark the project dirty
 // and ride on the next GitHub Save.
 
 export function PersonasPanel() {

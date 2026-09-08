@@ -2,6 +2,7 @@ import specParsePrompt from "@root/AGENT-SPEC-PROMPT.txt?raw";
 import { chat } from "@flowstore/core/llm/dispatch";
 import type { ProviderId, ProviderOptions } from "@flowstore/core/llm/types";
 import { validateSpec, formatErrors } from "@flowstore/core/validation/ajv";
+import { isFileBundleText, loadProject, parseFileBundleText } from "@flowstore/core/files";
 import type { Spec } from "@flowstore/core/schema/v0";
 
 // The exact prompt docs link to (AGENT-SPEC-PROMPT.txt), bundled so the
@@ -29,8 +30,15 @@ function buildSourceMessage(files: SourceFile[], notes: string): string {
   return blocks.join("\n\n");
 }
 
-// The prompt asks for a bare JSON object, but models occasionally wrap it in a
-// code fence or add a stray sentence. Recover the object before parsing.
+// The prompt asks for a multi-file text bundle (--- file: path --- blocks).
+// Models occasionally wrap it in a code fence; strip that. A model that
+// answered with a resolved-spec JSON object instead is accepted too.
+function extractBundle(text: string): string {
+  const trimmed = text.trim();
+  const fence = trimmed.match(/^```[a-z]*\s*\n([\s\S]*?)\n```$/);
+  return fence ? fence[1].trim() : trimmed;
+}
+
 function extractJson(text: string): string {
   const trimmed = text.trim();
   const fence = trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/);
@@ -42,8 +50,7 @@ function extractJson(text: string): string {
 }
 
 // One-shot wrapper around AGENT-SPEC-PROMPT: run the attached source material
-// through the model, parse the JSON it returns, and validate it against the v0
-// schema. No tools, no agent loop — the prompt emits a complete spec in one turn.
+// through the model, load the project files it returns, and validate them. No tools, no agent loop — the prompt emits a complete spec in one turn.
 export async function parseSourceToSpec(
   provider: ProviderId,
   apiKey: string,
@@ -74,11 +81,24 @@ export async function parseSourceToSpec(
     };
   }
 
+  const body = extractBundle(res.text);
+  if (isFileBundleText(body)) {
+    const { spec, errors } = loadProject(parseFileBundleText(body));
+    if (!spec) {
+      return {
+        ok: false,
+        error: "The generated project files did not load.",
+        errors: errors.map((e) => `${e.path ? e.path + ": " : ""}${e.message}`).slice(0, 30),
+      };
+    }
+    return { ok: true, spec };
+  }
+
   let parsed: unknown;
   try {
     parsed = JSON.parse(extractJson(res.text));
   } catch {
-    return { ok: false, error: "The model did not return valid JSON. Try again or a stronger model." };
+    return { ok: false, error: "The model did not return project files or valid JSON. Try again or a stronger model." };
   }
 
   const v = validateSpec(parsed);

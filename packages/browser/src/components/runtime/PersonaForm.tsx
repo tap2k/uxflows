@@ -392,7 +392,7 @@ export function PersonaForm({ spec, disabled, hideRunControls = false }: Persona
                 type="button"
                 onClick={onSavePersona}
                 disabled={disabled || busy}
-                title={`Update tests/personas/${loadedPersona.id}.persona.json with the current buffer.`}
+                title={`Update tests/personas/${loadedPersona.id}.md with the current buffer.`}
                 className="rounded border border-border-default bg-surface-panel px-2 py-0.5 text-[10px] text-text-secondary hover:bg-surface-hover disabled:opacity-40"
               >
                 save
@@ -456,7 +456,7 @@ export function PersonaForm({ spec, disabled, hideRunControls = false }: Persona
                 type="button"
                 onClick={onDeletePersona}
                 disabled={disabled || busy}
-                title={`Delete tests/personas/${loadedPersona.id}.persona.json.`}
+                title={`Delete tests/personas/${loadedPersona.id}.md.`}
                 className="rounded border border-state-error-line bg-surface-panel px-2 py-0.5 text-[10px] text-state-error-fg hover:bg-state-error-bg-hover disabled:opacity-40"
               >
                 delete

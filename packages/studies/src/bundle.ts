@@ -1,5 +1,7 @@
 import { ALL_LANGUAGES, generateSystemPrompt } from "@flowstore/core/codegen/promptGenerator";
-import { PROJECT_MANIFEST, emitAgent, fromYaml, loadProject, parseAgent, toYaml } from "@flowstore/core/files";
+import { PROJECT_MANIFEST, emitAgent, emitCase, emitGold, fromYaml, loadProject, loadTestingArtifacts, parseAgent, toYaml } from "@flowstore/core/files";
+import type { Gold } from "@flowstore/core/schema/files/gold";
+import type { TestCase } from "@flowstore/core/schema/files/testCase";
 import type { Agent } from "@flowstore/core/schema/v0";
 import type { CellState, Scenario, ScenarioTurn } from "./types";
 import { cellKey, goldOf, mergeGoldTurns, scriptOf } from "./types";
@@ -110,15 +112,6 @@ export function buildStudyBundle(args: {
   const src = args.sourceFiles ?? undefined;
   const files: Record<string, string> = src ? { ...src } : {};
   const j = (v: unknown) => JSON.stringify(v, null, 2) + "\n";
-  const parseJson = (text: string | undefined): Record<string, unknown> | undefined => {
-    if (!text) return undefined;
-    try {
-      const v = JSON.parse(text) as unknown;
-      return isRecord(v) ? v : undefined;
-    } catch {
-      return undefined;
-    }
-  };
 
   if (!files["flowstore.yaml"] && !files["flowstore.json"]) {
     files["flowstore.yaml"] = toYaml(PROJECT_MANIFEST);
@@ -171,22 +164,27 @@ export function buildStudyBundle(args: {
     }
   }
 
+  // Existing artifacts of the source project, by id, so an edited study
+  // keeps their extra fields (gold_id, tags, notes, mocks, …).
+  const existing = src ? loadTestingArtifacts(src, []) : null;
+  const origCase = (id: string) => existing?.testCases.find((c) => c.id === id);
+  const origGold = (id: string) => existing?.golds.find((g) => g.id === id);
+
   for (const s of scenarios) {
-    const path = `tests/cases/${s.id}.test.json`;
-    // A case that came from the source project keeps its extra fields
-    // (gold_id, tags, …); the study's edits win on the fields compare owns.
-    const orig = parseJson(src?.[path]);
-    files[path] = j({
+    // The study's edits win on the fields compare owns.
+    const orig = origCase(s.id);
+    files[`tests/cases/${s.id}.md`] = emitCase({
       $schema: "flowstore://test/case/v0",
       id: s.id,
       tags: ["src:compare"],
-      ...orig,
+      ...(orig ?? {}),
       scenario_id: s.scenarioId,
       name: s.name,
       user_turns: scriptOf(s),
       language: s.language,
       ...(hasVars ? { vars } : {}),
-    });
+    } as TestCase);
+    delete files[`tests/cases/${s.id}.test.json`];
   }
 
   const resultFiles: string[] = [];
@@ -241,23 +239,23 @@ export function buildStudyBundle(args: {
   for (const s of scenarios) {
     const ref = goldOf(s);
     if (ref.length === 0) continue;
-    const path = s.goldPath ?? `tests/gold/${s.id}.gold.json`;
-    const orig = parseJson(src?.[path]);
-    const untouched =
-      orig !== undefined && JSON.stringify(orig.turns) === JSON.stringify(s.turns);
-    const { blessed_at: origBlessed, ...origRest } = orig ?? {};
-    files[path] = j({
+    const goldId = s.goldPath ? s.goldPath.replace(/^tests\/gold\//, "").replace(/\.(md|gold\.json)$/, "") : s.id;
+    const orig = origGold(goldId);
+    const untouched = orig !== undefined && JSON.stringify(orig.turns) === JSON.stringify(s.turns);
+    const { blessed_at: origBlessed, ...origRest } = orig ?? ({} as Partial<Gold>);
+    files[`tests/gold/${goldId}.md`] = emitGold({
       $schema: "flowstore://test/gold/v0",
       tags: ["src:compare"],
       source_pointer: `compare-study:${args.agentId}`,
       ...origRest,
       ...(untouched && typeof origBlessed === "string" ? { blessed_at: origBlessed } : {}),
-      id: orig?.id ?? s.id,
+      id: goldId,
       name: s.name,
       turns: s.turns,
       language: s.language,
       scenario_id: s.scenarioId,
-    });
+    } as Gold);
+    delete files[`tests/gold/${goldId}.gold.json`];
   }
 
   return files;
@@ -284,12 +282,9 @@ export type ParsedStudyBundle = {
 
 export function parseStudyBundle(files: Record<string, string>): ParsedStudyBundle {
   const agent = readAgent(files) ?? {};
-  const cases = Object.keys(files)
-    .filter((k) => k.startsWith("tests/cases/") && k.endsWith(".test.json"))
-    .map((k) => JSON.parse(files[k]) as Record<string, unknown>);
-  const goldFiles = Object.keys(files)
-    .filter((k) => k.startsWith("tests/gold/") && k.endsWith(".gold.json"))
-    .map((path) => ({ path, gold: JSON.parse(files[path]) as Record<string, unknown> }));
+  const artifacts = loadTestingArtifacts(files, []);
+  const cases = artifacts.testCases as unknown as Array<Record<string, unknown>>;
+  const goldFiles = artifacts.golds.map((g) => ({ path: `tests/gold/${g.id}.md`, gold: g as unknown as Record<string, unknown> }));
 
   const goldTurns = (g: Record<string, unknown>): ScenarioTurn[] =>
     (Array.isArray(g.turns) ? g.turns : [])

@@ -28,7 +28,8 @@ const DecisionBranch = Type.Object(
     capability_assertions: Type.Optional(Type.Array(CapabilityAssertion)),
     notes: Type.Optional(Type.String()),
   },
-  { additionalProperties: false },
+  // Open: a harness may add its own per-branch fields (e.g. awaaz's gold_exit).
+  { additionalProperties: true },
 );
 
 // flowstore://test/decision-test/v0
@@ -81,7 +82,9 @@ export const DecisionTestSchema = Type.Object(
     language: Type.Optional(Type.String()),
     tags: Type.Optional(Type.Array(Type.String())),
   },
-  { additionalProperties: false },
+  // Open: decision tests are run by the project's harness, not the editor,
+  // and harnesses extend them (e.g. awaaz's decision_flow_id).
+  { additionalProperties: true },
 );
 
 export type DecisionTest = Static<typeof DecisionTestSchema>;

@@ -6,8 +6,9 @@ import {
   type ResolvedModelsConfig,
 } from "@flowstore/core/files/models";
 import type { LoadError } from "@flowstore/core/files/types";
+import { fromYaml } from "@flowstore/core/files/markdown";
 
-const MODELS_FILE = "models/endpoints.json";
+const MODELS_FILE = "models/models.yaml";
 
 function baseConfig(): ResolvedModelsConfig {
   return {
@@ -47,7 +48,7 @@ describe("decomposeModelsConfig — credential stripping", () => {
     expect(serialized).not.toContain("cap-secret");
     expect(serialized).not.toContain("agent-secret");
 
-    const parsed = JSON.parse(serialized);
+    const parsed = fromYaml<any>(serialized, MODELS_FILE);
     expect(parsed.models["local-llama"]).not.toHaveProperty("api_key");
     expect(parsed.capabilities.check_balance).not.toHaveProperty("headers");
     expect(parsed.agents.voicebot).not.toHaveProperty("turn_headers");

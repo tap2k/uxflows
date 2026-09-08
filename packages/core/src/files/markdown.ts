@@ -67,6 +67,50 @@ function dropUndefined(obj: Record<string, unknown>): Record<string, unknown> {
   return JSON.parse(JSON.stringify(obj)) as Record<string, unknown>;
 }
 
+// ---------- Multi-file text bundle ----------
+//
+// One text document carrying a whole project: what an LLM emits from
+// AGENT-SPEC-PROMPT and what the editor's import paste accepts.
+//
+//   --- file: agent.md ---
+//   ...
+//   --- file: flows/opening.md ---
+//   ...
+
+const BUNDLE_DELIM_RE = /^--- file: (.+?) ---\s*$/;
+
+export function isFileBundleText(text: string): boolean {
+  return /^--- file: .+ ---\s*$/m.test(text);
+}
+
+export function parseFileBundleText(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  let current: string | null = null;
+  let lines: string[] = [];
+  const flush = () => {
+    if (current !== null) out[current] = lines.join("\n").replace(/\s+$/, "") + "\n";
+  };
+  for (const line of text.split(/\r?\n/)) {
+    const m = BUNDLE_DELIM_RE.exec(line);
+    if (m) {
+      flush();
+      current = m[1].trim();
+      lines = [];
+      continue;
+    }
+    if (current !== null) lines.push(line);
+  }
+  flush();
+  return out;
+}
+
+export function formatFileBundleText(files: Record<string, string>): string {
+  return Object.keys(files)
+    .sort()
+    .map((path) => `--- file: ${path} ---\n${files[path].replace(/\s+$/, "")}\n`)
+    .join("\n");
+}
+
 // ---------- Sections ----------
 
 export interface Section {

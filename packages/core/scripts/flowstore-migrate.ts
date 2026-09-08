@@ -6,7 +6,7 @@
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadProjectFromPath, readDirectoryToFileMap, writeFileMapToDirectory } from "@flowstore/core/files/node";
-import { decomposeSpec, isLegacyLayout, loadProject } from "@flowstore/core/files";
+import { decomposeModelsConfig, decomposeSpec, decomposeTestingArtifacts, isLegacyLayout, loadProject } from "@flowstore/core/files";
 import type { Spec } from "@flowstore/core/schema/v0";
 
 const dir = resolve(process.argv[2] ?? "");
@@ -16,7 +16,10 @@ if (!process.argv[2] || !existsSync(dir)) {
 }
 
 const before = readDirectoryToFileMap(dir);
-if (!isLegacyLayout(before)) {
+const LEGACY_TESTS = /^tests\/(cases|personas|rubrics|gold|decisions)\/.+\.(test|persona|rubric|gold|decision)\.json$|^models\/.+\.json$/;
+const legacySpec = isLegacyLayout(before);
+const legacyTests = Object.keys(before).some((p) => LEGACY_TESTS.test(p));
+if (!legacySpec && !legacyTests) {
   console.log(`${dir}: already in markdown layout`);
   process.exit(0);
 }
@@ -28,7 +31,10 @@ if (!loaded.spec) {
 }
 for (const e of loaded.errors) console.warn(`warning: ${e.path ? e.path + ": " : ""}${e.message}`);
 
-const emitted = decomposeSpec(loaded.spec);
+const emitted: Record<string, string> = {
+  ...(legacySpec ? decomposeSpec(loaded.spec) : {}),
+  ...(legacyTests ? { ...decomposeTestingArtifacts(loaded.testingArtifacts), ...decomposeModelsConfig(loaded.modelsConfig) } : {}),
+};
 writeFileMapToDirectory(emitted, dir);
 
 const LEGACY = [
@@ -37,6 +43,7 @@ const LEGACY = [
   /^capabilities\/.+\.capability\.json$/, /^knowledge\/faq\.json$/, /^knowledge\/faq\/.+\.json$/,
   /^knowledge\/glossary\.json$/, /^knowledge\/tables\/.+\.(meta\.json|csv)$/,
   /^flows\/.+\.flow\.json$/, /^flows\/.+\.scripts\.csv$/,
+  LEGACY_TESTS,
 ];
 const removed: string[] = [];
 for (const path of Object.keys(before)) {
@@ -53,6 +60,14 @@ if (!after.spec) {
   process.exit(1);
 }
 const diff = specDiff(loaded.spec, after.spec);
+const testDiff: Diff[] = [];
+walk("/tests", canonTests(loaded.testingArtifacts), canonTests(after.testingArtifacts), testDiff);
+const realTestDiff = testDiff.filter((d) => !d.whitespaceOnly);
+if (realTestDiff.length > 0) {
+  console.error("testing artifacts changed in the round-trip:");
+  for (const d of realTestDiff) console.error(`  ${d.path}: ${d.before} → ${d.after}`);
+  process.exit(1);
+}
 console.log(`${dir}: wrote ${Object.keys(emitted).length} files, removed ${removed.length}`);
 // The emitter trims trailing whitespace on prose; that is the one difference
 // the layout introduces on purpose. Anything else is a real loss.
@@ -65,6 +80,21 @@ if (real.length > 0) {
 }
 console.log(diff.length > 0 ? "round-trip: identical modulo trailing whitespace" : "round-trip: identical");
 
+function canonTests(t: { testCases: unknown[]; personas: unknown[]; rubrics: unknown[]; golds: unknown[]; decisions: unknown[] }): unknown {
+  const byId = (xs: unknown[]) => [...xs].sort((a, b) => String((a as { id: string }).id).localeCompare(String((b as { id: string }).id)));
+  return canonKeys({ cases: byId(t.testCases), personas: byId(t.personas), rubrics: byId(t.rubrics), golds: byId(t.golds), decisions: byId(t.decisions) });
+}
+// Sort keys and drop empty-string fields (the emitter omits them), so the
+// comparison sees content, not serialization order.
+function canonKeys(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(canonKeys);
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return Object.fromEntries(Object.keys(o).filter((k) => o[k] !== undefined && o[k] !== "" && k !== "$schema").sort().map((k) => [k, canonKeys(o[k])]));
+  }
+  return v;
+}
+
 // Structural comparison, insensitive to key order and to the fields the
 // markdown layout normalizes ($schema URIs, entity order within collections).
 interface Diff { path: string; before: string; after: string; whitespaceOnly: boolean }
@@ -75,7 +105,7 @@ function specDiff(a: Spec, b: Spec): Diff[] {
   return out;
 }
 function canon(spec: Spec): unknown {
-  const s = JSON.parse(JSON.stringify(spec)) as Record<string, unknown>;
+  const s = canonKeys(JSON.parse(JSON.stringify(spec))) as Record<string, unknown>;
   const agent = s.agent as Record<string, unknown>;
   delete agent.$schema;
   for (const f of s.flows as Array<Record<string, unknown>>) delete f.$schema;

@@ -7,7 +7,7 @@ import { capabilityToolDefinitions } from "@flowstore/core/llm/capabilityTools";
 import type { Spec } from "@flowstore/core/schema/v0";
 
 interface Args {
-  format: "prompt" | "spec";
+  format: "prompt" | "spec" | "tests";
   input: string;
   out?: string;
   vars?: Record<string, unknown>;
@@ -27,8 +27,8 @@ function parseArgs(argv: string[]): Args {
     const a = argv[i];
     if (a === "--format") {
       const v = argv[++i];
-      if (v !== "prompt" && v !== "spec") {
-        usage(`unknown --format "${v}"; expected "prompt" or "spec"`);
+      if (v !== "prompt" && v !== "spec" && v !== "tests") {
+        usage(`unknown --format "${v}"; expected "prompt", "spec" or "tests"`);
       }
       format = v as Args["format"];
     } else if (a === "--out") {
@@ -70,12 +70,12 @@ function parseVars(raw: string | undefined): Record<string, unknown> | undefined
 function usage(msg?: string): never {
   if (msg) console.error(msg);
   console.error(
-    "usage: flowstore-compile <project-dir|bundle.flowstore.json> --format prompt|spec [--agent <id>] [--out <path>] [--vars k=v,k=v] [--vars-file <path.json>] [--language <code>]",
+    "usage: flowstore-compile <project-dir|bundle.flowstore.json> --format prompt|spec|tests [--agent <id>] [--out <path>] [--vars k=v,k=v] [--vars-file <path.json>] [--language <code>]",
   );
   process.exit(2);
 }
 
-function loadSpec(input: string): Spec {
+function loadResult(input: string): LoadResult {
   const path = resolve(input);
   if (!existsSync(path)) {
     console.error(`input not found: ${path}`);
@@ -100,7 +100,7 @@ function loadSpec(input: string): Spec {
     console.error("failed to load project");
     process.exit(1);
   }
-  return result.spec;
+  return result;
 }
 
 function emit(text: string, out?: string): void {
@@ -109,9 +109,18 @@ function emit(text: string, out?: string): void {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const spec = loadSpec(args.input);
+const loaded = loadResult(args.input);
+const spec = loaded.spec!;
 
-if (args.format === "prompt") {
+if (args.format === "tests") {
+  // Everything a harness needs besides the spec, already parsed: it never
+  // reads test files or the models config itself.
+  const t = loaded.testingArtifacts;
+  emit(JSON.stringify({
+    cases: t.testCases, personas: t.personas, rubrics: t.rubrics, golds: t.golds, decisions: t.decisions,
+    models: loaded.modelsConfig ? { default: loaded.modelsConfig.default, roles: loaded.modelsConfig.roles, models: Object.keys(loaded.modelsConfig.models) } : null,
+  }, null, 2) + "\n", args.out);
+} else if (args.format === "prompt") {
   const system_prompt = generateSystemPrompt(spec, args.vars, {
     language: args.language,
   });

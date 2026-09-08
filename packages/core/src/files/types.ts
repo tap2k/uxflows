@@ -4,6 +4,7 @@ import type { TestCase } from "@flowstore/core/schema/files/testCase";
 import type { Persona } from "@flowstore/core/schema/files/persona";
 import type { Rubric } from "@flowstore/core/schema/files/rubric";
 import type { Gold } from "@flowstore/core/schema/files/gold";
+import type { DecisionTest } from "@flowstore/core/schema/files/decisionTest";
 import type { Comment } from "@flowstore/core/schema/files/comment";
 
 export type FileMap = Record<string, string>;
@@ -34,6 +35,9 @@ export interface TestingArtifacts {
   personas: Persona[];
   rubrics: Rubric[];
   golds: Gold[];
+  // Routing matrices (tests/decisions/<id>.yaml). Loaded and saved; the
+  // harness runs them, the editor has no surface for them yet.
+  decisions: DecisionTest[];
   // Files skipped for an unrecognized $schema (forward-compat). Surfaced, not
   // silent — see IgnoredFile.
   ignored: IgnoredFile[];

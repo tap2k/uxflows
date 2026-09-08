@@ -5,6 +5,7 @@ import type { TestCase } from "@flowstore/core/schema/files/testCase";
 import type { Persona } from "@flowstore/core/schema/files/persona";
 import type { Rubric } from "@flowstore/core/schema/files/rubric";
 import type { Gold } from "@flowstore/core/schema/files/gold";
+import type { DecisionTest } from "@flowstore/core/schema/files/decisionTest";
 import type { TestingArtifacts } from "@flowstore/core/files";
 import { toSlug } from "@/lib/slug";
 
@@ -23,6 +24,8 @@ export interface TestsState {
   golds: Gold[];
   personas: Persona[];
   rubrics: Rubric[];
+  // Decision tests ride through unchanged: loaded, saved, no editor surface.
+  decisions: DecisionTest[];
   // Which gold is expanded in the Golds tab editor. Ephemeral session
   // state (not persisted) — set on capture/new/copy so the freshly
   // created gold opens inline.
@@ -75,6 +78,7 @@ export const useTestsStore = create<TestsState>()(
       golds: [],
       personas: [],
       rubrics: [],
+      decisions: [],
       selectedGoldId: null,
       pendingCaseId: null,
 
@@ -84,6 +88,7 @@ export const useTestsStore = create<TestsState>()(
           golds: artifacts.golds,
           personas: artifacts.personas,
           rubrics: artifacts.rubrics,
+          decisions: artifacts.decisions ?? [],
           selectedGoldId: null,
           pendingCaseId: null,
         });
@@ -95,6 +100,7 @@ export const useTestsStore = create<TestsState>()(
           golds: [],
           personas: [],
           rubrics: [],
+          decisions: [],
           selectedGoldId: null,
           pendingCaseId: null,
         });
@@ -107,6 +113,7 @@ export const useTestsStore = create<TestsState>()(
           personas: s.personas,
           rubrics: s.rubrics,
           golds: s.golds,
+          decisions: s.decisions,
           // ignored is a load-time diagnostic; nothing is skipped on save.
           ignored: [],
         };

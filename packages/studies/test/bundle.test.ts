@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { fromYaml, loadProject, parseAgent } from "@flowstore/core/files";
+import { fromYaml, loadProject, loadTestingArtifacts, parseAgent } from "@flowstore/core/files";
+
+// Parse one emitted markdown artifact through the loader.
+const caseOf = (files: Record<string, string>, id: string) => loadTestingArtifacts({ [`tests/cases/${id}.md`]: files[`tests/cases/${id}.md`] }, []).testCases[0] as Record<string, unknown>;
+const goldOf_ = (files: Record<string, string>, id: string) => loadTestingArtifacts({ [`tests/gold/${id}.md`]: files[`tests/gold/${id}.md`] }, []).golds[0] as Record<string, unknown> | undefined;
 import { validateFile } from "@flowstore/core/validation/ajv";
 import { GoldSchema } from "@flowstore/core/schema/files/gold";
 import { TestCaseSchema } from "@flowstore/core/schema/files/testCase";
@@ -62,13 +66,13 @@ describe("buildStudyBundle", () => {
 
   it("scenarios serialize as valid test cases — user turns only, with language and scenario_id", () => {
     for (const s of scenarios) {
-      const parsed = JSON.parse(files[`tests/cases/${s.id}.test.json`]);
+      const parsed = caseOf(files, s.id);
       const { valid, errors } = validateFile(TestCaseSchema, parsed);
       expect(valid, JSON.stringify(errors)).toBe(true);
       expect(parsed.scenario_id).toBe("sc-refill");
       expect(parsed.language).toBe(s.language);
     }
-    expect(JSON.parse(files["tests/cases/s1.test.json"]).user_turns).toEqual(["hi", "refill please"]);
+    expect(caseOf(files, "s1").user_turns).toEqual(["hi", "refill please"]);
   });
 
   it("only done cells become results, each valid with usage mapped to unit-typed fields", () => {
@@ -102,7 +106,7 @@ describe("buildStudyBundle", () => {
   });
 
   it("a scenario with agent turns exports a valid gold — never freshly blessed", () => {
-    const parsed = JSON.parse(files["tests/gold/s1.gold.json"]);
+    const parsed = goldOf_(files, "s1")!;
     const { valid, errors } = validateFile(GoldSchema, parsed);
     expect(valid, JSON.stringify(errors)).toBe(true);
     // Compare never mints a blessing — blessed_at only survives an
@@ -113,7 +117,7 @@ describe("buildStudyBundle", () => {
     expect(parsed.language).toBe("EN");
     expect(parsed.turns).toEqual(scenarios[0].turns);
     // The user-only scenario writes no gold.
-    expect(files["tests/gold/s2.gold.json"]).toBeUndefined();
+    expect(files["tests/gold/s2.md"]).toBeUndefined();
   });
 
   it("placeholder-fill vars ship as provided declarations + case fixtures, prompt untouched", () => {
@@ -130,7 +134,7 @@ describe("buildStudyBundle", () => {
     expect(agent.system_prompt).toBe("You are Asha at {{clinic_name}}.");
     expect(fromYaml(withVars["variables.yaml"], "variables.yaml")).toEqual({ clinic_name: { type: "string", provided: true } });
     for (const s of scenarios) {
-      const c = JSON.parse(withVars[`tests/cases/${s.id}.test.json`]);
+      const c = caseOf(withVars, s.id);
       expect(c.vars).toEqual({ clinic_name: "Sunrise Clinic" });
       expect(validateFile(TestCaseSchema, c).valid).toBe(true);
     }
@@ -157,12 +161,14 @@ describe("buildStudyBundle", () => {
       agentId: "agent-test",
       prompt: "p",
       models,
-      scenarios: [{ ...scenarios[0], goldPath: "tests/gold/legacy-name.gold.json" }],
+      scenarios: [{ ...scenarios[0], goldPath: "tests/gold/gold-orig.gold.json" }],
       cells,
-      sourceFiles: { "tests/gold/legacy-name.gold.json": origGold },
+      sourceFiles: { "tests/gold/gold-orig.gold.json": origGold },
     });
-    expect(roundTrip["tests/gold/s1.gold.json"]).toBeUndefined();
-    const parsed = JSON.parse(roundTrip["tests/gold/legacy-name.gold.json"]);
+    expect(roundTrip["tests/gold/s1.md"]).toBeUndefined();
+    // Re-emitted in the markdown layout under the gold's own id; the legacy file goes.
+    expect(roundTrip["tests/gold/gold-orig.gold.json"]).toBeUndefined();
+    const parsed = goldOf_(roundTrip, "gold-orig")!;
     expect(parsed.id).toBe("gold-orig");
     expect(parsed.blessed_at).toBe("2026-07-01T00:00:00Z");
     expect(parsed.source_pointer).toBe("call-recording-2026-06-30");
@@ -183,13 +189,13 @@ describe("buildStudyBundle", () => {
         {
           ...scenarios[0],
           turns: [u("hi"), a("Edited reply."), u("refill please"), a("Sure.")],
-          goldPath: "tests/gold/s1.gold.json",
+          goldPath: "tests/gold/gold-orig.gold.json",
         },
       ],
       cells,
-      sourceFiles: { "tests/gold/s1.gold.json": origGold },
+      sourceFiles: { "tests/gold/gold-orig.gold.json": origGold },
     });
-    const parsed = JSON.parse(edited["tests/gold/s1.gold.json"]);
+    const parsed = goldOf_(edited, "gold-orig")!;
     expect(parsed.blessed_at).toBeUndefined();
     expect(parsed.id).toBe("gold-orig");
   });
@@ -217,7 +223,7 @@ describe("buildStudyBundle", () => {
     // s1's gold merges back in (its user turns match the case script) and
     // records where it came from; s2 stays user-only.
     expect(parsed.scenarios).toEqual([
-      { ...scenarios[0], goldPath: "tests/gold/s1.gold.json" },
+      { ...scenarios[0], goldPath: "tests/gold/s1.md" },
       scenarios[1],
     ]);
     expect(parsed.vars).toEqual({ clinic_name: "Sunrise Clinic" });
@@ -226,8 +232,9 @@ describe("buildStudyBundle", () => {
   it("a gold whose user turns mismatch the case passes through untouched — scenario stays user-only", () => {
     const mismatch = {
       "agent.json": JSON.stringify({ system_prompt: "p" }),
-      "tests/cases/s1.test.json": JSON.stringify({ id: "s1", user_turns: ["hi"], language: "EN" }),
+      "tests/cases/s1.test.json": JSON.stringify({ $schema: "flowstore://test/case/v0", id: "s1", user_turns: ["hi"], language: "EN" }),
       "tests/gold/s1.gold.json": JSON.stringify({
+        $schema: "flowstore://test/gold/v0",
         id: "s1",
         turns: [u("DIFFERENT SCRIPT"), a("reply")],
         blessed_at: "2026-07-01T00:00:00Z",
@@ -247,6 +254,7 @@ describe("buildStudyBundle", () => {
       sourceFiles: mismatch,
     });
     expect(out["tests/gold/s1.gold.json"]).toBe(mismatch["tests/gold/s1.gold.json"]);
+    expect(out["tests/gold/s1.md"]).toBeUndefined();
   });
 
   it("compiles the prompt from the spec when a project has no manual system_prompt", () => {
@@ -278,6 +286,7 @@ describe("buildStudyBundle", () => {
     const goldOnly = {
       "agent.json": JSON.stringify({ system_prompt: "p" }),
       "tests/gold/g1.gold.json": JSON.stringify({
+        $schema: "flowstore://test/gold/v0",
         id: "g1",
         name: "From gold",
         language: "HI",
@@ -297,7 +306,7 @@ describe("buildStudyBundle", () => {
         name: "From gold",
         language: "HI",
         turns: [u("namaste"), a("hello"), u("haan")],
-        goldPath: "tests/gold/g1.gold.json",
+        goldPath: "tests/gold/g1.md",
       },
     ]);
   });
@@ -374,12 +383,14 @@ describe("buildStudyBundle with sourceFiles", () => {
     const out = buildStudyBundle({
       agentId: "x", prompt: "p", models, scenarios, cells, sourceFiles: source,
     });
-    const c = JSON.parse(out["tests/cases/s1.test.json"]);
+    const c = caseOf(out, "s1");
     expect(c.gold_id).toBe("g-orig");
     expect(c.tags).toEqual(["from-repo"]);
     // Compare-owned fields win — the study's (possibly edited) turns ship.
     expect(c.user_turns).toEqual(["hi", "refill please"]);
+    // The legacy source file is replaced, not duplicated.
+    expect(out["tests/cases/s1.test.json"]).toBeUndefined();
     // A scenario with no source counterpart still gets a fresh case file.
-    expect(JSON.parse(out["tests/cases/s2.test.json"]).tags).toEqual(["src:compare"]);
+    expect(caseOf(out, "s2").tags).toEqual(["src:compare"]);
   });
 });

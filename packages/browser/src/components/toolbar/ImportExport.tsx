@@ -23,11 +23,13 @@ import { EndpointsSheet } from "@/components/sheets/EndpointsSheet";
 import { GitHubOpenModal } from "@/components/toolbar/GitHubOpenModal";
 import { GitHubProjectControls } from "@/components/toolbar/GitHubProjectControls";
 import {
-  decomposeSpec,
-  decomposeTestingArtifacts,
   decomposeComments,
   decomposeModelsConfig,
+  decomposeSpec,
+  decomposeTestingArtifacts,
+  isFileBundleText,
   loadProject,
+  parseFileBundleText,
 } from "@flowstore/core/files";
 import { useModelsStore } from "@/lib/store/models";
 import { loadPortableSpec, loadSpec, type LoadSpecOptions } from "@/lib/store/loadSpec";
@@ -401,6 +403,12 @@ function ImportModal({ onClose, onCommit }: ImportModalProps) {
   }
 
   function onPasteCommit() {
+    // A pasted project (the multi-file text AGENT-SPEC-PROMPT emits) loads
+    // as a project; anything else is a resolved spec in JSON or YAML.
+    if (isFileBundleText(text)) {
+      loadFileMap(parseFileBundleText(text), "No flowstore project found in the pasted files.");
+      return;
+    }
     const parsed = tryParseSpecText(text);
     if (!parsed.ok) {
       setErrors([parsed.error]);
