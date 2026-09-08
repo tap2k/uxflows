@@ -10,7 +10,7 @@ import {
   tagRepoTopic,
   writeFileMapToRepo,
 } from "@flowstore/core/files/github";
-import { decomposeSpec, decomposeTestingArtifacts } from "@flowstore/core/files";
+import { decomposeSpec, decomposeTestingArtifacts, scaffoldReadme } from "@flowstore/core/files";
 import { useTestsStore } from "@/lib/store/tests";
 import { useDirtyStore } from "@/lib/store/dirty";
 
@@ -62,6 +62,7 @@ export function SaveToNewRepoModal({ onClose, onOpenSettings }: SaveToNewRepoMod
       const client = makeGitHubClient(pat);
       const created = await createRepo(client, { name: slug, private: isPrivate });
       const fileMap = {
+        "README.md": scaffoldReadme(spec, { projectName: slug }),
         ...decomposeSpec(spec),
         ...decomposeTestingArtifacts(useTestsStore.getState().toTestingArtifacts()),
       };

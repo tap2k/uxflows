@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loadProject } from "@flowstore/core/files";
+import { fromYaml, loadProject, parseAgent } from "@flowstore/core/files";
 import { validateFile } from "@flowstore/core/validation/ajv";
 import { GoldSchema } from "@flowstore/core/schema/files/gold";
 import { TestCaseSchema } from "@flowstore/core/schema/files/testCase";
@@ -48,12 +48,13 @@ const files = buildStudyBundle({ agentId: "agent-test", prompt: "You are Asha, a
 describe("buildStudyBundle", () => {
   it("every emitted file parses as JSON", () => {
     for (const [path, content] of Object.entries(files)) {
-      expect(() => JSON.parse(content), path).not.toThrow();
+      if (path.endsWith(".json")) expect(() => JSON.parse(content), path).not.toThrow();
     }
+    expect(files["agent.md"]).toBeDefined();
   });
 
-  it("agent.json carries the verbatim prompt as a full override with a stub entry flow", () => {
-    const agent = JSON.parse(files["agent.json"]);
+  it("agent.md carries the verbatim prompt as a full override with a stub entry flow", () => {
+    const agent = parseAgent(files["agent.md"]);
     expect(agent.system_prompt).toBe("You are Asha, a clinic assistant.");
     expect(agent.entry_flow_id).toBe("");
     expect(agent.meta.languages).toEqual(["EN", "HI"]);
@@ -124,18 +125,17 @@ describe("buildStudyBundle", () => {
       cells,
       vars: { clinic_name: "Sunrise Clinic", empty_one: "  " },
     });
-    const agent = JSON.parse(withVars["agent.json"]);
+    const agent = parseAgent(withVars["agent.md"]);
     // The prompt stays byte-verbatim — fill is a session bag, never a rewrite.
     expect(agent.system_prompt).toBe("You are Asha at {{clinic_name}}.");
-    expect(agent.variables).toEqual({ clinic_name: { type: "string", provided: true } });
+    expect(fromYaml(withVars["variables.yaml"], "variables.yaml")).toEqual({ clinic_name: { type: "string", provided: true } });
     for (const s of scenarios) {
       const c = JSON.parse(withVars[`tests/cases/${s.id}.test.json`]);
       expect(c.vars).toEqual({ clinic_name: "Sunrise Clinic" });
       expect(validateFile(TestCaseSchema, c).valid).toBe(true);
     }
     // No vars → no declarations, no fixtures.
-    const bare = JSON.parse(files["agent.json"]);
-    expect(bare.variables).toBeUndefined();
+    expect(files["variables.yaml"]).toBeUndefined();
   });
 
   it("re-exporting an untouched imported gold preserves identity and blessing at its original path", () => {

@@ -34,14 +34,16 @@
     "github-init": "tsx scripts/github-init.ts",
     "flowstore-init-project": "tsx scripts/flowstore-init-project.ts",
     "flowstore-compile": "tsx scripts/flowstore-compile.ts",
-    "flowstore-convert": "tsx scripts/flowstore-convert.ts"
+    "flowstore-convert": "tsx scripts/flowstore-convert.ts",
+    "flowstore-migrate": "tsx scripts/flowstore-migrate.ts"
   },
   "dependencies": {
     "@octokit/rest": "^21.1.1",
     "@sinclair/typebox": "^0.34.49",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@types/node": "^20",

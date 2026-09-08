@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { decomposeSpec } from "@flowstore/core/files";
+import { decomposeSpec, scaffoldReadme } from "@flowstore/core/files";
 import { writeFileMapToDirectory } from "@flowstore/core/files/node";
 import type { Spec } from "@flowstore/core/schema/v0";
 
@@ -35,7 +35,7 @@ if (existsSync(targetDir) && readdirSync(targetDir).some((n) => n !== ".DS_Store
 }
 
 const spec = JSON.parse(readFileSync(sourcePath, "utf8")) as Spec;
-const fileMap = decomposeSpec(spec);
+const fileMap = { "README.md": scaffoldReadme(spec), ...decomposeSpec(spec) };
 writeFileMapToDirectory(fileMap, targetDir);
 
 console.log(`wrote ${Object.keys(fileMap).length} files to ${targetDir}`);

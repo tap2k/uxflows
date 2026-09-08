@@ -125,7 +125,7 @@ function cellToString(v: unknown): string {
   return JSON.stringify(v);
 }
 
-function coerceCell(raw: string, type: string): unknown {
+export function coerceCell(raw: string, type: string): unknown {
   const t = type.toLowerCase();
   if (t === "number") {
     if (raw === "") return "";

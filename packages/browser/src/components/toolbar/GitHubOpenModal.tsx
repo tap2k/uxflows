@@ -101,7 +101,7 @@ export function GitHubOpenModal({ onClose, onOpenSettings }: GitHubOpenModalProp
         // Repo has commits (e.g., README only) but no flowstore project — offer init.
         // If load errors look structural (malformed flowstore files), surface them so
         // the user doesn't accidentally overwrite something they were editing.
-        const isMissingAgent = errors.some((e) => e.message.includes("missing agent.json"));
+        const isMissingAgent = errors.some((e) => e.message.includes("missing agent.md"));
         if (isMissingAgent && errors.length === 1) {
           setInitOffer({ repo, branch: selectedBranch, commitSha });
           return;

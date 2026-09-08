@@ -52,8 +52,8 @@ export function GitHubStudyOpenModal({
     setError(null);
     try {
       const { files } = await readRepoToFileMap({ client: readClient, owner, repo, ref });
-      if (!files["agent.json"]) {
-        setError("No flowstore project found in this repo (missing agent.json).");
+      if (!files["agent.md"] && !files["agent.json"]) {
+        setError("No flowstore project found in this repo (missing agent.md).");
         return;
       }
       onFiles(files);
@@ -201,23 +201,23 @@ export function GitHubStudySaveModal({
       let files = buildFiles();
       let note: string | undefined;
       // Clobber guard: pushing a study into a repo that already IS a
-      // flowstore project must not overwrite its agent.json/flowstore.json —
+      // flowstore project must not overwrite its agent.md/flowstore.yaml —
       // there, only the testing artifacts (cases, golds, runs) land.
       try {
         await client.rest.repos.getContent({
           owner: r.owner,
           repo: r.repo,
-          path: "agent.json",
+          path: "agent.md",
           ref: r.default_branch,
         });
         files = Object.fromEntries(
           Object.entries(files).filter(
-            ([p]) => p !== "agent.json" && p !== "flowstore.json",
+            ([p]) => p !== "agent.md" && p !== "flowstore.yaml",
           ),
         );
-        note = "Existing flowstore project detected — wrote tests/ and runs only (agent.json untouched).";
+        note = "Existing flowstore project detected — wrote tests/ and runs only (agent.md untouched).";
       } catch {
-        // No agent.json (or empty repo) → write the full bundle.
+        // No agent.md (or empty repo) → write the full bundle.
       }
       await writeFileMapToRepo(
         { client, owner: r.owner, repo: r.repo, ref: r.default_branch },

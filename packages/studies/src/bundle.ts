@@ -1,5 +1,6 @@
 import { ALL_LANGUAGES, generateSystemPrompt } from "@flowstore/core/codegen/promptGenerator";
-import { loadProject } from "@flowstore/core/files/load";
+import { PROJECT_MANIFEST, emitAgent, fromYaml, loadProject, parseAgent, toYaml } from "@flowstore/core/files";
+import type { Agent } from "@flowstore/core/schema/v0";
 import type { CellState, Scenario, ScenarioTurn } from "./types";
 import { cellKey, goldOf, mergeGoldTurns, scriptOf } from "./types";
 
@@ -11,7 +12,7 @@ import { cellKey, goldOf, mergeGoldTurns, scriptOf } from "./types";
 // (trivially zippable later); the export IS the graduation artifact — the
 // harness runs it, the editor opens it.
 //
-// Note: agent.json is a stub — an imported-prompt project has no flows yet,
+// Note: agent.md is a stub — an imported-prompt project has no flows yet,
 // and entry_flow_id is required by AgentSchema (the "flowless project" open
 // question). The stub records intent; extraction at graduation mints flows.
 
@@ -27,15 +28,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 // run. Shared by the parse side (what compare shows on open) and the build
 // side (was the prompt edited since?).
 function effectivePromptOf(files: Record<string, string>): string {
-  let sys: string | undefined;
-  try {
-    const agent = files["agent.json"]
-      ? (JSON.parse(files["agent.json"]) as { system_prompt?: unknown })
-      : {};
-    sys = typeof agent.system_prompt === "string" ? agent.system_prompt : undefined;
-  } catch {
-    // Malformed agent.json — treat as spec'd and let the compiler answer.
-  }
+  const sys = readAgent(files)?.system_prompt;
   let prompt = sys ?? "";
   if (!sys || sys.includes("{{generated}}")) {
     try {
@@ -47,6 +40,43 @@ function effectivePromptOf(files: Record<string, string>): string {
     }
   }
   return prompt;
+}
+
+// The agent envelope of a FileMap, whichever layout it carries: agent.md
+// (markdown source) or the pre-markdown agent.json. Undefined when absent or
+// unparseable.
+function readAgent(files: Record<string, string>): Partial<Agent> | undefined {
+  try {
+    if (files["agent.md"]) return parseAgent(files["agent.md"]);
+    if (files["agent.json"]) return JSON.parse(files["agent.json"]) as Partial<Agent>;
+  } catch {
+    // Malformed — treat as spec'd and let the compiler answer.
+  }
+  return undefined;
+}
+
+// Existing variable declarations of a project, whichever layout it carries.
+function readVariables(files: Record<string, string>): Record<string, unknown> {
+  try {
+    if (files["variables.yaml"]) return (fromYaml<Record<string, unknown>>(files["variables.yaml"], "variables.yaml") ?? {});
+    if (files["variables.json"]) {
+      const v = JSON.parse(files["variables.json"]) as { variables?: Record<string, unknown> };
+      return v.variables ?? {};
+    }
+    const inline = (readAgent(files) as { variables?: Record<string, unknown> } | undefined)?.variables;
+    return inline ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function declareVars(vars: Record<string, string>, declared: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...declared,
+    ...Object.fromEntries(
+      Object.keys(vars).filter((n) => declared[n] === undefined).map((n) => [n, { type: "string", provided: true }]),
+    ),
+  };
 }
 
 export function buildStudyBundle(args: {
@@ -65,7 +95,7 @@ export function buildStudyBundle(args: {
   vars?: Record<string, string>;
   // The FileMap the study was opened from, when it came from an existing
   // project (GitHub open, upload, example). When present the bundle is that
-  // project — flows, real agent.json and all — with the study's cases,
+  // project — flows, real agent.md and all — with the study's cases,
   // golds, and run results overlaid, instead of a synthesized flowless stub.
   // This is what makes graduation lossless for spec'd projects.
   sourceFiles?: Record<string, string> | null;
@@ -90,12 +120,18 @@ export function buildStudyBundle(args: {
     }
   };
 
-  if (!files["flowstore.json"]) {
-    files["flowstore.json"] = j({ $schema: "flowstore://spec/project/v0" });
+  if (!files["flowstore.yaml"] && !files["flowstore.json"]) {
+    files["flowstore.yaml"] = toYaml(PROJECT_MANIFEST);
   }
-  const srcAgent = parseJson(src?.["agent.json"]);
+  const srcAgent = src ? (readAgent(src) as Record<string, unknown> | undefined) : undefined;
+  // A source project still in the pre-markdown layout keeps agent.json: its
+  // flows are *.flow.json, and an agent.md beside them would switch the loader
+  // to the markdown layout and lose them. Run flowstore-migrate on the repo.
+  const agentPath = src?.["agent.json"] && !src?.["agent.md"] ? "agent.json" : "agent.md";
+  const writeAgent = (agent: Record<string, unknown>) =>
+    agentPath === "agent.md" ? emitAgent(agent as unknown as Agent) : j(agent);
   if (!srcAgent) {
-    files["agent.json"] = j({
+    files[agentPath] = writeAgent({
       $schema: "flowstore://spec/agent/v0",
       id: args.agentId,
       name: "Imported agent (compare study)",
@@ -112,44 +148,26 @@ export function buildStudyBundle(args: {
       // Full override (no {{generated}}): compiles to itself verbatim — see
       // SCHEMA.md § system_prompt.
       system_prompt: prompt,
-      // Placeholder-fill vars: declared provided so the case fixtures below
-      // ship them at session start (the only gate fixture vars pass through).
-      ...(hasVars
-        ? {
-            variables: Object.fromEntries(
-              Object.keys(vars).map((n) => [n, { type: "string", provided: true }]),
-            ),
-          }
-        : {}),
       // Stub: no flows exist pre-extraction (flowless-project acceptance is a
       // pending loader/validator decision).
       entry_flow_id: "",
     });
+    // Placeholder-fill vars: declared provided so the case fixtures below
+    // ship them at session start (the only gate fixture vars pass through).
+    if (hasVars) files["variables.yaml"] = toYaml(declareVars(vars, {}));
   } else {
     // Source project's agent stands — flows, entry_flow_id, meta untouched.
     // Only a prompt the user actually edited in compare (differs from what
     // the source project runs on) becomes a full override; an unedited study
-    // leaves agent.json byte-identical so the editor keeps compiling from
+    // leaves agent.md byte-identical so the editor keeps compiling from
     // the spec. New fill vars get declared on top of existing declarations.
     const promptEdited = prompt !== effectivePromptOf(src ?? {});
-    if (promptEdited || hasVars) {
-      const declared = isRecord(srcAgent.variables) ? srcAgent.variables : {};
-      files["agent.json"] = j({
-        ...srcAgent,
-        ...(promptEdited ? { system_prompt: prompt } : {}),
-        ...(hasVars
-          ? {
-              variables: {
-                ...declared,
-                ...Object.fromEntries(
-                  Object.keys(vars)
-                    .filter((n) => declared[n] === undefined)
-                    .map((n) => [n, { type: "string", provided: true }]),
-                ),
-              },
-            }
-          : {}),
-      });
+    if (promptEdited) files[agentPath] = writeAgent({ ...srcAgent, system_prompt: prompt });
+    if (hasVars) {
+      // New fill vars get declared on top of the project's existing declarations.
+      const declared = readVariables(src ?? {});
+      files["variables.yaml"] = toYaml(declareVars(vars, declared));
+      delete files["variables.json"];
     }
   }
 
@@ -256,7 +274,7 @@ export function buildStudyBundle(args: {
 
 export type ParsedStudyBundle = {
   prompt: string;
-  // agent.json's id, when the bundle has one — round-trips study identity so
+  // The agent's id, when the bundle has one — round-trips study identity so
   // a re-opened study keeps its editor-side buckets. Null: caller mints.
   agentId: string | null;
   scenarios: Scenario[];
@@ -265,9 +283,7 @@ export type ParsedStudyBundle = {
 };
 
 export function parseStudyBundle(files: Record<string, string>): ParsedStudyBundle {
-  const agent = files["agent.json"]
-    ? (JSON.parse(files["agent.json"]) as { id?: string; system_prompt?: string })
-    : {};
+  const agent = readAgent(files) ?? {};
   const cases = Object.keys(files)
     .filter((k) => k.startsWith("tests/cases/") && k.endsWith(".test.json"))
     .map((k) => JSON.parse(files[k]) as Record<string, unknown>);

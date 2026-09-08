@@ -90,8 +90,8 @@ function useDropdown() {
 }
 
 // Walk a dropped folder into a FileMap keyed by paths relative to that folder
-// (so the top-level folder name is stripped — loadProject expects `agent.json`
-// at the root, not `my-project/agent.json`).
+// (so the top-level folder name is stripped — loadProject expects `agent.md`
+// at the root, not `my-project/agent.md`).
 async function readDirectoryEntry(root: FileSystemDirectoryEntry): Promise<FileMap> {
   const out: FileMap = {};
   const rootPrefix = root.fullPath.replace(/^\//, "");
@@ -454,8 +454,8 @@ function ImportModal({ onClose, onCommit }: ImportModalProps) {
   }
 
   // Folder picker uses webkitdirectory: the input yields a flat FileList whose
-  // entries carry `webkitRelativePath` like "my-project/agent.json". Strip the
-  // top-level folder name so loadProject sees `agent.json` at the root.
+  // entries carry `webkitRelativePath` like "my-project/agent.md". Strip the
+  // top-level folder name so loadProject sees `agent.md` at the root.
   async function onFolder(e: React.ChangeEvent<HTMLInputElement>) {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) {
@@ -529,7 +529,7 @@ function ImportModal({ onClose, onCommit }: ImportModalProps) {
         >
           <span className="fs-control text-text-secondary">Drop a file or folder here</span>
           <span className="fs-caption text-text-tertiary">
-            .json, .yaml, .yml, .zip, .flowstore.json bundle — or a decomposed project folder
+            .json, .yaml, .yml, .zip, .flowstore.json bundle — or a project folder in the markdown layout
           </span>
           <div className="flex gap-2 pt-1">
             {/* A label, not a Button: it has to wrap the file input to keep the

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { Octokit } from "@octokit/rest";
-import { decomposeSpec } from "@flowstore/core/files";
+import { decomposeSpec, scaffoldReadme } from "@flowstore/core/files";
 import { writeFileMapToRepo } from "@flowstore/core/files/github";
 import type { Spec } from "@flowstore/core/schema/v0";
 
@@ -32,7 +32,7 @@ if (!owner || !repo) {
 
 const branch = process.env.GH_BRANCH ?? "main";
 const source = JSON.parse(readFileSync(specPath, "utf8")) as Spec;
-const fileMap = decomposeSpec(source);
+const fileMap = { "README.md": scaffoldReadme(source), ...decomposeSpec(source) };
 const client = new Octokit({ auth: token });
 const message = `Initialize flowstore project from ${basename(specPath)}`;
 

@@ -8,7 +8,7 @@ import type { Octokit } from "@flowstore/core/files/github";
 // behavior can't drift between the two surfaces.
 
 // Projects stamp this topic at create time so they surface in repo pickers
-// without probing each repo for agent.json.
+// without probing each repo for agent.md.
 export const FLOWSTORE_TOPIC = "flowstore";
 
 export interface RepoSummary {

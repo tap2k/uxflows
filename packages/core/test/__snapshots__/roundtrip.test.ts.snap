@@ -1,21 +1,16 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`decomposed on-disk layout contract (FILE-MODEL) > emits the expected file paths for fnol-min 1`] = `
+exports[`source layout contract (FILE-MODEL) > emits the expected file paths for fnol-min 1`] = `
 [
-  "README.md",
-  "agent.json",
-  "capabilities/cap_file_claim.capability.json",
-  "capabilities/cap_verify_policy.capability.json",
-  "flows/flow_claim.flow.json",
-  "flows/flow_claim.scripts.csv",
-  "flows/flow_intake.flow.json",
-  "flows/flow_intake.scripts.csv",
-  "flows/flow_verify.flow.json",
-  "flows/flow_verify.scripts.csv",
-  "flows/int_human.flow.json",
-  "flows/int_human.scripts.csv",
-  "flowstore.json",
-  "guardrails.json",
-  "variables.json",
+  "agent.md",
+  "capabilities/cap_file_claim.md",
+  "capabilities/cap_verify_policy.md",
+  "flows/flow_claim.md",
+  "flows/flow_intake.md",
+  "flows/flow_verify.md",
+  "flows/int_human.md",
+  "flowstore.yaml",
+  "guardrails.md",
+  "variables.yaml",
 ]
 `;

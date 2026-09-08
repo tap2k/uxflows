@@ -1,22 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { decomposeSpec, loadProject } from "@flowstore/core/files";
+import { decomposeSpec, loadProject, parseFlow } from "@flowstore/core/files";
 import { loadExampleSpec, loadFixtureSpec, normalize, sortById } from "./fixtures";
 
 describe("decomposeSpec ↔ loadProject round-trip", () => {
   it("is lossless for the coffee single-file spec", () => {
     const source = loadExampleSpec("coffee/coffee.json");
-    const fileMap = decomposeSpec(source);
-    const { spec: resolved, errors } = loadProject(fileMap);
-
+    const { spec: resolved, errors } = loadProject(decomposeSpec(source));
     expect(errors).toEqual([]);
-    expect(resolved).not.toBeNull();
     expect(normalize(sortById(resolved!))).toEqual(normalize(sortById(source)));
-  });
-
-  it("emits a non-trivial file map (decomposition actually splits the spec)", () => {
-    const source = loadExampleSpec("coffee/coffee.json");
-    const fileMap = decomposeSpec(source);
-    expect(Object.keys(fileMap).length).toBeGreaterThan(1);
   });
 
   it("is lossless for the decomposed multi-flow fnol-min fixture", () => {
@@ -27,39 +18,86 @@ describe("decomposeSpec ↔ loadProject round-trip", () => {
   });
 });
 
-describe("decomposed on-disk layout contract (FILE-MODEL)", () => {
-  // The round-trip above only proves decompose/load are inverse — it stays green
-  // even if the layout silently changes. This snapshot pins the actual file
-  // names + paths that a Git repo (and the editor's GitHub-open path) depend on,
-  // so a change to the decomposition layout is caught here.
+describe("source layout contract (FILE-MODEL)", () => {
+  // The round-trip stays green if the layout silently changes; this pins the
+  // file names a repo, the editor's GitHub save, and the harnesses depend on.
   it("emits the expected file paths for fnol-min", () => {
     const paths = Object.keys(decomposeSpec(loadFixtureSpec("fnol-min.json"))).sort();
     expect(paths).toMatchSnapshot();
   });
+
+  it("never emits README.md (hand-written READMEs must survive editor saves)", () => {
+    expect(decomposeSpec(loadFixtureSpec("fnol-min.json"))["README.md"]).toBeUndefined();
+  });
 });
 
-describe("orphaned scripts-CSV rows", () => {
-  // flow_claim's scripts CSV is pinned by the layout snapshot above.
-  function loadWithAppendedRow(row: string) {
-    const fileMap = decomposeSpec(loadFixtureSpec("fnol-min.json"));
-    const csvPath = "flows/flow_claim.scripts.csv";
-    fileMap[csvPath] = fileMap[csvPath].trimEnd() + "\n" + row + "\n";
-    return { csvPath, ...loadProject(fileMap) };
-  }
+describe("markdown conventions", () => {
+  const langs = ["EN", "ES"];
 
-  it("warns on an explicit-id row missing from the flow file, but still merges it", () => {
-    const { csvPath, spec, errors } = loadWithAppendedRow(
-      "s_ghost,A line whose script was removed from the flow file",
-    );
-    const flow = spec!.flows.find((f) => f.id === "flow_claim")!;
-    expect(flow.scripts!.some((s) => s.id === "s_ghost")).toBe(true); // still merged
-    expect(
-      errors.some((e) => e.path === csvPath && /warning: script "s_ghost"/.test(e.message)),
-    ).toBe(true);
+  it("reads a paragraph script as plain text and later language lines as variations", () => {
+    const flow = parseFlow("f", [
+      "# Flow",
+      "Do the thing.",
+      "## Scripts",
+      "### s_hello",
+      "Hello there.",
+      "- EN: Hi!",
+      "- EN: Hey.",
+    ].join("\n"), "flows/f.md", langs);
+    expect(flow.scripts).toEqual([{ id: "s_hello", text: "Hello there.", variations: { EN: ["Hi!", "Hey."] } }]);
   });
 
-  it("does not warn for id-less rows (sheet-authoring append path)", () => {
-    const { errors } = loadWithAppendedRow(",An authored line with no id");
-    expect(errors.filter((e) => /warning: script/.test(e.message))).toEqual([]);
+  it("reads language lines as a per-language map, repeats as variations", () => {
+    const flow = parseFlow("f", "# Flow\n## Scripts\n### s_x\n- EN: one\n- ES: uno\n- EN: two", "flows/f.md", langs);
+    expect(flow.scripts).toEqual([{ id: "s_x", text: { EN: "one", ES: "uno" }, variations: { EN: ["two"] } }]);
+  });
+
+  it("keeps a multi-line script text through indented continuation lines", () => {
+    const flow = parseFlow("f", "# Flow\n## Scripts\n### s_x\n- EN: first line\n  second line", "flows/f.md", langs);
+    expect(flow.scripts![0].text).toEqual({ EN: "first line\nsecond line" });
+  });
+
+  it("expands the condition and actions shorthands in frontmatter", () => {
+    const flow = parseFlow("f", [
+      "---",
+      "type: happy",
+      "entry_condition: caller asks for a human",
+      "exit_paths:",
+      "  - { id: xp_a, goto: END, condition: caller is done, actions: [cap_log] }",
+      "  - { id: xp_b, goto: END, condition: { expression: 'x == 1', method: calculation } }",
+      "---",
+      "# Flow",
+    ].join("\n"), "flows/f.md", langs);
+    expect(flow.entry_condition).toEqual({ expression: "caller asks for a human", method: "llm" });
+    expect(flow.exit_paths[0]).toEqual({ id: "xp_a", goto: "END", condition: { expression: "caller is done", method: "llm" }, actions: [{ capability_id: "cap_log" }] });
+    expect(flow.exit_paths[1].condition).toEqual({ expression: "x == 1", method: "calculation" });
+  });
+
+  it("rejects a flow without a name heading and an unknown section", () => {
+    expect(() => parseFlow("f", "no heading", "flows/f.md", langs)).toThrow(/missing "# <flow name>"/);
+    expect(() => parseFlow("f", "# Flow\n## Bogus\nx", "flows/f.md", langs)).toThrow(/unknown section/);
+  });
+
+  it("does not mistake a plain list line for a language line", () => {
+    const flow = parseFlow("f", "# Flow\n## Scripts\n### s_x\n- Note: this is text, not a language", "flows/f.md", langs);
+    expect(flow.scripts![0].text).toBe("- Note: this is text, not a language");
+  });
+
+  it("surfaces a duplicate guardrail id and a bad frontmatter as load errors, not throws", () => {
+    const files = decomposeSpec(loadFixtureSpec("fnol-min.json"));
+    files["guardrails.md"] += "- gr_dup: one\n- gr_dup: two\n";
+    files["flows/flow_claim.md"] = "---\nexit_paths: [\n---\n# Claim";
+    const { errors } = loadProject(files);
+    expect(errors.some((e) => /duplicate guardrail id "gr_dup"/.test(e.message))).toBe(true);
+    expect(errors.some((e) => e.path === "flows/flow_claim.md" && /frontmatter/.test(e.message))).toBe(true);
+  });
+
+  it("still loads the pre-markdown JSON layout so it can be migrated", () => {
+    const files = { "agent.json": JSON.stringify(loadFixtureSpec("fnol-min.json").agent), ...Object.fromEntries(
+      loadFixtureSpec("fnol-min.json").flows.map((f) => [`flows/${f.id}.flow.json`, JSON.stringify(f)]),
+    ) };
+    const { spec, errors } = loadProject(files);
+    expect(errors).toEqual([]);
+    expect(spec!.flows.length).toBe(loadFixtureSpec("fnol-min.json").flows.length);
   });
 });
