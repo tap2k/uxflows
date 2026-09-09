@@ -5,19 +5,20 @@ const u = (text: string) => ({ role: "user" as const, text });
 const a = (text: string) => ({ role: "agent" as const, text });
 
 describe("turnText grammar", () => {
-  it("compact: plain lines are user turns, agent: lines are gold replies", () => {
-    expect(textToTurns("hi\nagent: hello\nthanks")).toEqual([u("hi"), a("hello"), u("thanks")]);
+  it("compact: plain lines are user turns", () => {
+    expect(textToTurns("hi\nthanks")).toEqual([u("hi"), u("thanks")]);
   });
 
-  it("compact round-trips", () => {
+  it("a user-only script round-trips compact; any agent turn switches to the transcript form", () => {
+    expect(turnsToText([u("hi"), u("thanks")])).toBe("hi\nthanks");
     const turns = [u("hi"), a("hello"), u("thanks")];
+    expect(turnsToText(turns)).toBe("User: hi\nAgent: hello\nUser: thanks");
     expect(textToTurns(turnsToText(turns))).toEqual(turns);
-    expect(turnsToText(turns)).toBe("hi\nagent: hello\nthanks");
   });
 
-  it("a multi-line turn serializes explicit — every turn marked, continuations verbatim", () => {
-    const turns = [u("hi"), a("line one\n\nline two"), u("bye")];
-    expect(turnsToText(turns)).toBe("user: hi\nagent: line one\n\nline two\nuser: bye");
+  it("a multi-line turn serializes as a transcript — every turn marked, continuations indented", () => {
+    const turns = [u("hi"), a("line one\nline two"), u("bye")];
+    expect(turnsToText(turns)).toBe("User: hi\nAgent: line one\n  line two\nUser: bye");
     expect(textToTurns(turnsToText(turns))).toEqual(turns);
   });
 
@@ -37,11 +38,9 @@ describe("turnText grammar", () => {
     ]);
   });
 
-  it("typing a trailing newline survives the round trip in both modes", () => {
-    // Compact: the empty line is an empty user turn (the next line being typed).
+  it("typing a trailing newline survives the round trip in compact mode", () => {
+    // The empty line is an empty user turn (the next line being typed).
     expect(turnsToText(textToTurns("hi\n"))).toBe("hi\n");
-    // Explicit: the empty line rides as a trailing continuation of the last turn.
-    expect(turnsToText(textToTurns("user: hi\nagent: a\nb\n"))).toBe("user: hi\nagent: a\nb\n");
   });
 
   it("marker prefixes are case-insensitive and tolerate the following space", () => {
@@ -59,6 +58,7 @@ describe("turnText grammar", () => {
       "hi\nagent: hello\nthanks",
       "user:", // mid-typing a marker
       "user: hi\nagent: a\nb",
+      "User [barge-in]: cut in",
       "hello\nthere\nuser: next",
       "Agent:reply",
       "hi\n",

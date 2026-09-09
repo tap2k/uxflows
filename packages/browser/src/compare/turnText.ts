@@ -1,55 +1,42 @@
 import type { ScenarioTurn } from "@flowstore/studies";
+import { formatTranscript, parseTranscript } from "@flowstore/core/files";
 
-// The scenario textarea's line grammar — one parser, two serializations:
+// The scenario textarea's line grammar. Two forms, one parser:
 //
-// - compact (no `user:` marker anywhere): one turn per line; plain lines
-//   are user turns, an `agent:` prefix marks a gold reply. The cheap
-//   typing path, and the only form most scenarios ever need.
-// - explicit (any `user:` marker present): every `user:`/`agent:` marker
-//   starts a turn, and unprefixed lines CONTINUE the current turn — once
-//   markers exist they are the only thing that starts a turn, so plain
-//   lines before the first marker coalesce into a single user turn. This
-//   is how multi-line replies — real model output blessed via
-//   save-as-gold — survive the round trip: the markers carry all the
-//   structure, so no indentation tricks and no structured editor.
+// - compact (no role marker anywhere): one turn per line, every line a user
+//   turn. The cheap typing path for a user-only script.
+// - transcript (any marker present): the grammar shared with a gold's
+//   ## Transcript and a case's ## Turns (core parseTranscript) — a
+//   `User:` / `Agent:` marker starts a turn, any other non-blank line
+//   continues it. This is how multi-line replies blessed via save-as-gold
+//   survive the round trip; it is also byte-for-byte what the project files
+//   hold, so a transcript pastes between a gold file and here unchanged.
 //
-// turnsToText stays compact until some turn is multi-line, so scenarios
-// keep the terse form until they need the markers.
-//
-// Known limitation: text that itself starts a line with "user:"/"agent:"
-// misparses — a hand-typed turn starting with a marker, or (sharper) a
-// blessed multi-line reply whose continuation line echoes transcript
-// format, which explicit serialization emits verbatim and re-parse then
-// splits. The gold pane renders the parse live, so a wrong-side bubble is
-// immediately visible. No escape syntax until someone actually hits it.
+// turnsToText emits the transcript form whenever an agent turn or a
+// multi-line turn exists, else compact.
 //
 // serialize∘parse is a NORMALIZER, not the identity (marker spacing and
 // case, mode selection). The textarea must therefore hold its own draft
 // and never echo the normalized form back mid-edit — see TurnsTextarea.
-const AGENT = /^agent:\s?/i;
-const USER = /^user:\s?/i;
+const MARKER = /^(agent|user)(?:\s*\[[a-z-]+\])?:/im;
 
 export const turnsToText = (turns: ScenarioTurn[]): string => {
-  const explicit = turns.some((t) => t.text.includes("\n"));
-  return turns
-    .map((t) => (explicit || t.role === "agent" ? `${t.role}: ${t.text}` : t.text))
-    .join("\n");
+  const transcript = turns.some((t) => t.role === "agent" || t.text.includes("\n"));
+  return transcript ? formatTranscript(turns) : turns.map((t) => t.text).join("\n");
 };
 
 export const textToTurns = (text: string): ScenarioTurn[] => {
+  if (!MARKER.test(text)) return text.split("\n").map((line) => ({ role: "user", text: line }));
+  // Plain lines before the first marker coalesce into one user turn.
   const lines = text.split("\n");
-  const explicit = lines.some((l) => USER.test(l));
-  const turns: ScenarioTurn[] = [];
-  for (const line of lines) {
-    if (USER.test(line)) {
-      turns.push({ role: "user", text: line.replace(USER, "") });
-    } else if (AGENT.test(line)) {
-      turns.push({ role: "agent", text: line.replace(AGENT, "") });
-    } else if (explicit && turns.length > 0) {
-      turns[turns.length - 1].text += `\n${line}`;
-    } else {
-      turns.push({ role: "user", text: line });
-    }
+  const first = lines.findIndex((l) => MARKER.test(l));
+  const lead = lines.slice(0, first).join("\n");
+  const body = lines.slice(first).join("\n");
+  const turns: ScenarioTurn[] = lead === "" ? [] : [{ role: "user", text: lead }];
+  try {
+    for (const t of parseTranscript(body, "scenario")) turns.push({ role: t.role, text: t.text });
+  } catch {
+    // Mid-typing garbage (e.g. an unknown flag): keep what parsed so far.
   }
   return turns;
 };

@@ -120,11 +120,13 @@ Prose-bearing artifacts are markdown with frontmatter; the body holds the artifa
 
 | File | Frontmatter | Body |
 |---|---|---|
-| `tests/cases/<id>.md` | everything typed: vars, mocks, assertions, evaluators, persona_id, language, tags | notes as the preamble; `## Turns` with one `- user turn` per line, `- [barge-in] text` for an interruption; `## Actor` for an inline user-sim prompt |
+| `tests/cases/<id>.md` | everything typed: vars, mocks, assertions, evaluators, persona_id, language, tags | notes as the preamble; `## Turns`, the user side of a transcript in the grammar below; `## Actor` for an inline user-sim prompt |
 | `tests/personas/<id>.md` | vars, mocks, traits, model, tags | the system prompt as the preamble; `## Notes` |
 | `tests/rubrics/<id>.md` | scale, model | the criteria as the preamble; `## Prompt template` |
 | `tests/gold/<id>.md` | vars, mocks, language, blessed_at, tags, source_pointer | notes as the preamble; `## Transcript` of `Agent:` / `User:` lines, a continuation line indented two spaces |
 | `tests/decisions/<id>.yaml` | the whole routing matrix | none |
+
+One line grammar serves a gold's transcript, a case's turns, and the compare tool's scenario editor: `User: text` or `Agent: text` starts a turn, `User [barge-in]: text` marks an interruption, an empty `User:` is a silent turn, and any other non-blank line continues the turn before it. A case is a gold with only the user side; a transcript pastes between a project file and compare unchanged.
 
 `tests/evaluators/*.py` are Python. `tests/runs/<timestamp>-<label>/` holds a manifest and one `*.result.json` per case, gitignored.
 

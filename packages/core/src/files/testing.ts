@@ -2,7 +2,7 @@ import { validateFile, formatErrors } from "@flowstore/core/validation/ajv";
 import { TestCaseSchema, type TestCase } from "@flowstore/core/schema/files/testCase";
 import { PersonaSchema, type Persona } from "@flowstore/core/schema/files/persona";
 import { RubricSchema, type Rubric } from "@flowstore/core/schema/files/rubric";
-import { GoldSchema, type Gold, type GoldTurn } from "@flowstore/core/schema/files/gold";
+import { GoldSchema, type Gold } from "@flowstore/core/schema/files/gold";
 import { DecisionTestSchema, type DecisionTest } from "@flowstore/core/schema/files/decisionTest";
 import type { FileMap, IgnoredFile, LoadError, TestingArtifacts } from "./types";
 import { findSection, fromYaml, joinFrontmatter, splitFrontmatter, splitSections, toYaml } from "./markdown";
@@ -11,10 +11,11 @@ import { findSection, fromYaml, joinFrontmatter, splitFrontmatter, splitSections
 // frontmatter; the body holds the artifact's own prose and the frontmatter
 // everything typed (FILE-MODEL § Testing artifacts):
 //
-//   tests/cases/<id>.md        notes as preamble; "## Turns" (- one user turn per
-//                              line, "- [barge-in] text" for an interruption,
-//                              "- [silence]" for an empty turn);
-//                              "## Actor" = an inline user-sim prompt
+//   tests/cases/<id>.md        notes as preamble; "## Turns" — the user side of a
+//                              transcript in the same line grammar as a gold
+//                              ("User: text", "User [barge-in]: text", an empty
+//                              "User:" for silence); "## Actor" = an inline
+//                              user-sim prompt
 //   tests/personas/<id>.md     system_prompt as preamble; "## Notes"
 //   tests/rubrics/<id>.md      criteria as preamble; "## Prompt template"
 //   tests/gold/<id>.md         notes as preamble; "## Transcript" of
@@ -86,21 +87,16 @@ export function decomposeTestingArtifacts(artifacts: TestingArtifacts): FileMap 
 
 // ---------- cases ----------
 
-const BARGE_IN = "[barge-in] ";
-const SILENCE = "[silence]";
-
 export function emitCase(c: TestCase): string {
   const { $schema: _s, id: _id, notes, user_turns, system_prompt, ...front } = c;
   void _s; void _id;
   const parts: string[] = [];
   if (notes) parts.push(notes.trim());
   if (user_turns) {
-    parts.push("## Turns", ...user_turns.map((t) => {
-      const text = typeof t === "string" ? t : t.text;
-      const barge = typeof t !== "string" && t.barge_in;
-      const body = text === "" ? SILENCE : text.replace(/\n/g, "\n  ");
-      return "- " + (barge ? BARGE_IN : "") + body;
-    }));
+    const turns = user_turns.map((t) =>
+      typeof t === "string" ? { role: "user" as const, text: t } : { role: "user" as const, text: t.text, barge_in: t.barge_in },
+    );
+    parts.push("## Turns", formatTranscript(turns));
   }
   if (system_prompt !== undefined) parts.push("## Actor", system_prompt.trim());
   return joinFrontmatter(front, parts.join("\n\n"));
@@ -114,29 +110,15 @@ function parseCase(id: string, text: string, path: string): TestCase {
   if (notes) c.notes = notes;
   const turns = findSection(sections, "Turns");
   if (turns) {
-    c.user_turns = parseTurnList(turns.body).map((t) => {
-      const barge = t.startsWith(BARGE_IN);
-      const raw = barge ? t.slice(BARGE_IN.length) : t;
-      const text = raw === SILENCE ? "" : raw;
-      return barge ? { text, barge_in: true } : text;
+    c.user_turns = parseTranscript(turns.body, path).map((t) => {
+      if (t.role !== "user") throw new Error(`${path}: a case scripts only the user side; found an Agent: line under ## Turns`);
+      return t.barge_in ? { text: t.text, barge_in: true } : t.text;
     });
   }
   const actor = findSection(sections, "Actor");
   if (actor) c.system_prompt = actor.body.trim();
   rejectUnknownSections(sections, ["turns", "actor"], path);
   return c as unknown as TestCase;
-}
-
-// "- text" items; a line indented two spaces continues the previous item.
-function parseTurnList(body: string): string[] {
-  const out: string[] = [];
-  for (const line of body.split(/\r?\n/)) {
-    if (/^- /.test(line)) out.push(line.slice(2));
-    else if (line === "-") out.push("");
-    else if (/^  /.test(line) && out.length > 0) out[out.length - 1] += "\n" + line.slice(2);
-    else if (line.trim() !== "") throw new Error(`expected "- turn" lines under ## Turns; found: ${line.slice(0, 60)}`);
-  }
-  return out;
 }
 
 // ---------- personas ----------
@@ -183,13 +165,8 @@ export function emitGold(g: Gold): string {
   void _s; void _id;
   const parts: string[] = [];
   if (notes) parts.push(notes.trim());
-  parts.push("## Transcript", turns.map(formatTurn).join("\n"));
+  parts.push("## Transcript", formatTranscript(turns));
   return joinFrontmatter(front, parts.join("\n\n"));
-}
-
-function formatTurn(t: GoldTurn): string {
-  const who = t.role === "agent" ? "Agent" : "User";
-  return `${who}: ${t.text.replace(/\n/g, "\n  ")}`;
 }
 
 function parseGold(id: string, text: string, path: string): Gold {
@@ -201,23 +178,55 @@ function parseGold(id: string, text: string, path: string): Gold {
   const g: Record<string, unknown> = { $schema: GOLD_SCHEMA, id, ...doc.meta };
   const notes = preamble.trim();
   if (notes) g.notes = notes;
-  g.turns = parseTranscript(transcript.body, path);
+  g.turns = parseTranscript(transcript.body, path).map(({ role, text }) => ({ role, text }));
   return g as unknown as Gold;
 }
 
-// Same line grammar as compare's scenario textarea (turnText.ts): a role
-// marker starts a turn, case-insensitive, space optional; any other
-// non-blank line continues the current turn. The emitter indents
-// continuations two spaces; the parser strips that indent if present.
-const TURN_RE = /^(agent|user):\s?(.*)$/i;
+// ---------- the transcript grammar ----------
+//
+// One line grammar for a gold's ## Transcript, a case's ## Turns, and
+// compare's scenario textarea: a role marker starts a turn, case-insensitive,
+// with an optional flag in brackets ("User [barge-in]: text"); any other
+// non-blank line continues the current turn. An empty "User:" is a silent
+// turn. The emitter indents continuations two spaces; the parser strips that
+// indent if present.
 
-export function parseTranscript(body: string, path: string): GoldTurn[] {
-  const turns: GoldTurn[] = [];
+export interface TranscriptTurn {
+  role: "agent" | "user";
+  text: string;
+  barge_in?: boolean;
+}
+
+const TURN_RE = /^(agent|user)(?:\s*\[([a-z-]+)\])?:\s?(.*)$/i;
+
+export function formatTranscript(turns: TranscriptTurn[]): string {
+  return turns
+    .map((t) => {
+      const who = t.role === "agent" ? "Agent" : "User";
+      const flag = t.barge_in ? " [barge-in]" : "";
+      const text = t.text.replace(/\n/g, "\n  ");
+      return text === "" ? `${who}${flag}:` : `${who}${flag}: ${text}`;
+    })
+    .join("\n");
+}
+
+export function parseTranscript(body: string, path: string): TranscriptTurn[] {
+  const turns: TranscriptTurn[] = [];
   for (const line of body.split(/\r?\n/)) {
     const m = TURN_RE.exec(line);
-    if (m) turns.push({ role: m[1].toLowerCase() === "agent" ? "agent" : "user", text: m[2] });
-    else if (turns.length > 0 && line.trim() !== "") turns[turns.length - 1].text += "\n" + line.replace(/^  /, "");
-    else if (line.trim() !== "") throw new Error(`${path}: expected "Agent:" / "User:" lines; found: ${line.slice(0, 60)}`);
+    if (m) {
+      const flag = m[2]?.toLowerCase();
+      if (flag !== undefined && flag !== "barge-in") throw new Error(`${path}: unknown turn flag [${m[2]}]`);
+      const turn: TranscriptTurn = { role: m[1].toLowerCase() === "agent" ? "agent" : "user", text: m[3] };
+      if (flag === "barge-in") turn.barge_in = true;
+      turns.push(turn);
+    } else if (turns.length > 0 && (/^  /.test(line) || line.trim() !== "")) {
+      // An indented line continues the turn, even when blank: that is how the
+      // emitter carries a paragraph break inside a turn.
+      turns[turns.length - 1].text += "\n" + line.replace(/^  /, "");
+    } else if (line.trim() !== "") {
+      throw new Error(`${path}: expected "Agent:" / "User:" lines; found: ${line.slice(0, 60)}`);
+    }
   }
   return turns;
 }
